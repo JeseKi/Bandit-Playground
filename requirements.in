@@ -1,0 +1,7 @@
+uv
+ruff
+ty
+numpy
+plotly
+pip-tools
+pydantic
