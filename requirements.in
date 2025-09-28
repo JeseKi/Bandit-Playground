@@ -1,6 +1,7 @@
 uv
 ruff
 ty
+mypy
 numpy
 plotly
 pip-tools
