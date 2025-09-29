@@ -21,20 +21,17 @@ class Environment:
     def __init__(
         self,
         arm_num: int,
-        seed: int = 42,
         config: EnvConfig = EnvConfig(),
     ) -> None:
         """Initialize the environment
 
         Args:
             arm_num (int): Number of arms.
-            seed (int): Seed for the environment.
             config (EnvConfig): Configuration for the environment.
         """
         # config
-        self.rng: random.Random = random.Random(seed)
-        self.nprng: np.random.Generator = np.random.default_rng(seed)
-        self.seed: int = seed
+        self.rng: random.Random = random.Random(config.seed)
+        self.nprng: np.random.Generator = np.random.default_rng(config.seed)
         self.config: EnvConfig = config
 
         # state

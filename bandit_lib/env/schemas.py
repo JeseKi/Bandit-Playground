@@ -26,3 +26,4 @@ class EnvConfig(BaseModel):
     piecewize_method: PiecewizeMethod = Field(
         default=PiecewizeMethod.PERMUTATION, description="Method for piecewize method"
     )
+    seed: int = Field(default=42, description="Seed for the environment.")
