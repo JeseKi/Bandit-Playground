@@ -12,16 +12,16 @@ class PiecewizeMethod(Enum):
 
 
 class DynamicEnvironmentConfig(BaseModel):
-    random_walk_internal: int = Field(1, description="Internal for random walk", ge=1)
+    random_walk_internal: int = Field(default=1, description="Internal for random walk", ge=1)
     random_walk_arm_num: int = Field(
-        1, description="Number of arms for random walk", ge=1
+        default=1, description="Number of arms for random walk", ge=1
     )
     random_walk_std: float = Field(
-        0.01, description="Standard deviation for random walk", ge=0
+        default=0.01, description="Standard deviation for random walk", ge=0
     )
     piecewize_internal: int = Field(
-        1, description="Internal for piecewize method", ge=1
+        default=1, description="Internal for piecewize method", ge=1
     )
     piecewize_method: PiecewizeMethod = Field(
-        PiecewizeMethod.PERMUTATION, description="Method for piecewize method"
+        default=PiecewizeMethod.PERMUTATION, description="Method for piecewize method"
     )

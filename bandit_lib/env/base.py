@@ -5,7 +5,7 @@ import random
 
 import numpy as np
 
-from .shemas import DynamicEnvironmentConfig, PiecewizeMethod
+from .schemas import DynamicEnvironmentConfig, PiecewizeMethod
 
 
 class Arm:
