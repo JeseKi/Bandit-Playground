@@ -5,7 +5,7 @@ import random
 
 import numpy as np
 
-from .schemas import DynamicEnvironmentConfig, PiecewizeMethod
+from .schemas import EnvConfig, PiecewizeMethod
 
 
 class Arm:
@@ -22,20 +22,20 @@ class Environment:
         self,
         arm_num: int,
         seed: int = 42,
-        dynamic_config: DynamicEnvironmentConfig | None = None,
+        config: EnvConfig = EnvConfig(),
     ) -> None:
         """Initialize the environment
 
         Args:
             arm_num (int): Number of arms.
             seed (int): Seed for the environment.
-            dynamic_config (DynamicEnvironmentConfig): Dynamic configuration for the environment. If None, the environment is static.
+            config (EnvConfig): Configuration for the environment.
         """
         # config
         self.rng: random.Random = random.Random(seed)
         self.nprng: np.random.Generator = np.random.default_rng(seed)
         self.seed: int = seed
-        self.dynamic_config: DynamicEnvironmentConfig | None = dynamic_config
+        self.config: EnvConfig = config
 
         # state
         self.best_arm_index: int = -1
@@ -68,22 +68,21 @@ class Environment:
         self.best_arm_index = self.arms.index(best_arm)
 
     def _dynamic(self, current_step: int) -> None:
-        if self.dynamic_config is None:
+        if not self.config.enable_dynamic:
             return
 
         self._random_walk(current_step)
         self._piecewize(current_step)
 
     def _random_walk(self, current_step: int) -> None:
-        assert self.dynamic_config is not None
-        if self.dynamic_config.random_walk_internal % current_step != 0:
+        if self.config.random_walk_internal % current_step != 0:
             return
 
-        m = self.rng.sample(self.arms, self.dynamic_config.random_walk_arm_num)
+        m = self.rng.sample(self.arms, self.config.random_walk_arm_num)
         samples = self.nprng.normal(
             0,
-            self.dynamic_config.random_walk_std,
-            self.dynamic_config.random_walk_arm_num,
+            self.config.random_walk_std,
+            self.config.random_walk_arm_num,
         )
         for machine, sample in zip(m, samples):
             r = machine.reward_probability + sample
@@ -95,23 +94,22 @@ class Environment:
         self.best_arm_index = m.index(best_arm)
 
     def _piecewize(self, current_step: int) -> None:
-        assert self.dynamic_config is not None
 
-        if current_step % self.dynamic_config.piecewize_internal != 0:
+        if current_step % self.config.piecewize_internal != 0:
             return
 
         if (
-            self.dynamic_config.piecewize_method
+            self.config.piecewize_method
             == PiecewizeMethod.DETERMINISTIC_REWARD_DRIFT
         ):
             self._deterministic_reward_drift()
-        elif self.dynamic_config.piecewize_method == PiecewizeMethod.PERMUTATION:
+        elif self.config.piecewize_method == PiecewizeMethod.PERMUTATION:
             self._reward_permutation()
-        elif self.dynamic_config.piecewize_method == PiecewizeMethod.RESET:
+        elif self.config.piecewize_method == PiecewizeMethod.RESET:
             self._reset()
         else:
             raise ValueError(
-                f"Invalid piecewize method: {self.dynamic_config.piecewize_method}"
+                f"Invalid piecewize method: {self.config.piecewize_method}"
             )
 
     def _reward_permutation(self) -> None:
