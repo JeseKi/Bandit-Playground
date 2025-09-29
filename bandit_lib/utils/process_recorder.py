@@ -7,7 +7,13 @@ from typing import List
 import math
 
 from bandit_lib.agents.schemas import Metrics, MetricsConfig
-from .schemas import ProcessDataDump
+from .schemas import ProcessDataDump, MetaDataDump
+
+def save_meta_data(meta_data: MetaDataDump, path: Path) -> None:
+    if not path.parent.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        f.write(meta_data.model_dump_json(indent=4))
 
 class ProcessDataLogger:
     def __init__(self, run_id: str, total_steps: int, metrics_config: MetricsConfig) -> None:
@@ -43,7 +49,6 @@ class ProcessDataLogger:
         return ProcessDataDump(
             run_id=self.run_id,
             create_at=datetime.now(),
-            total_steps=self.total_steps,
             metrics=self.metrics,
         )
     
