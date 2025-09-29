@@ -55,20 +55,20 @@ class BaseAgent(ABC, Generic[AgentReward_T, AgentAlgorithm_T]):
         self.rng: np.random.Generator = np.random.default_rng(seed)
         self.metrics_config: MetricsConfig = metrics_config
         self.process_data_logger: ProcessDataLogger | None = process_data_logger
-        
+
         # state
         self.steps: int = 0
         self.optimal_arm_chosen_times: int = 0
         self.metrics: List[Metrics] = []
         self.convergence_step: int = -1
-        
+
         self._convergenced: bool = False
-        
+
         # init
-        self.rewards_states: AgentReward_T # must be set in the subclass
+        self.rewards_states: AgentReward_T  # must be set in the subclass
         if self.process_data_logger is not None:
             self.process_data_logger.agent = self
-    
+
     def step(self) -> None:
         """Step the agent."""
         arm_index = self.act()
@@ -91,18 +91,24 @@ class BaseAgent(ABC, Generic[AgentReward_T, AgentAlgorithm_T]):
         self.rewards_states.rewards[arm_index, 0] += 1
         self.rewards_states.rewards[arm_index, 1] += reward
         self.rewards_states.sliding_window_rewards.append((1, reward))
-        
+
         # update metrics
         if arm_index == self.env.best_arm_index:
             self.optimal_arm_chosen_times += 1
-            
-        if not self.env.config.enable_dynamic and \
-            not self._convergenced and \
-                self.optimal_arm_rate() >= self.metrics_config.optimal_arm_rate_threshold:
+
+        if (
+            not self.env.config.enable_dynamic
+            and not self._convergenced
+            and self.optimal_arm_rate()
+            >= self.metrics_config.optimal_arm_rate_threshold
+        ):
             self._convergenced = True
             self.convergence_step = self.steps
-        
-        if self.process_data_logger is not None and self.process_data_logger.should_record(self.steps):
+
+        if (
+            self.process_data_logger is not None
+            and self.process_data_logger.should_record(self.steps)
+        ):
             metrics = Metrics(
                 current_step=self.steps,
                 regret_rate=self.regret_rate(),
@@ -132,18 +138,22 @@ class BaseAgent(ABC, Generic[AgentReward_T, AgentAlgorithm_T]):
         if self.steps == 0:
             return 0
         return self.total_reward() / self.steps
-    
+
     def total_reward(self) -> int:
         """Calculate the total reward of the agent."""
         r = int(np.sum(self.rewards_states.rewards[:, 1]))
         return r
-    
+
     def optimal_arm_rate(self) -> float:
         """Calculate the optimal arm rate of the agent."""
         return self.optimal_arm_chosen_times / self.steps
-    
+
     def sliding_window_reward_rate(self) -> float:
         """Calculate the sliding window reward rate of the agent."""
-        rewards: int = np.sum([reward for _, reward in self.rewards_states.sliding_window_rewards])
-        pull_counts: int = np.sum([pull_count for pull_count, _ in self.rewards_states.sliding_window_rewards])
+        rewards: int = np.sum(
+            [reward for _, reward in self.rewards_states.sliding_window_rewards]
+        )
+        pull_counts: int = np.sum(
+            [pull_count for pull_count, _ in self.rewards_states.sliding_window_rewards]
+        )
         return rewards / pull_counts

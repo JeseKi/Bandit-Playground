@@ -12,8 +12,12 @@ class PiecewizeMethod(Enum):
 
 
 class EnvConfig(BaseModel):
-    enable_dynamic: bool = Field(default=False, description="Enable dynamic environment.")
-    random_walk_internal: int = Field(default=1, description="Internal for random walk", ge=1)
+    enable_dynamic: bool = Field(
+        default=False, description="Enable dynamic environment."
+    )
+    random_walk_internal: int = Field(
+        default=1, description="Internal for random walk", ge=1
+    )
     random_walk_arm_num: int = Field(
         default=1, description="Number of arms for random walk", ge=1
     )
