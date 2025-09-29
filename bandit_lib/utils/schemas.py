@@ -6,12 +6,13 @@ import uuid
 
 from pydantic import BaseModel, Field
 
-from bandit_lib.agents.schemas import Metrics, MetricsConfig, AlgorithmConfig
+from bandit_lib.agents.schemas import Metrics, MetricsConfig, AlgorithmConfig, BaseRewardStates
 from bandit_lib.env.schemas import EnvConfig
 
 class ProcessDataDump(BaseModel):
     run_id: str
     create_at: datetime = Field(default_factory=datetime.now)
+    rewards: BaseRewardStates
     metrics: List[Metrics]
     
 class MetaDataDump(BaseModel):

@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, TYPE_CHECKING
 
 import math
 
 from bandit_lib.agents.schemas import Metrics, MetricsConfig
 from .schemas import ProcessDataDump, MetaDataDump
+
+if TYPE_CHECKING:
+    from bandit_lib.agents.base import BaseAgent
 
 def save_meta_data(meta_data: MetaDataDump, path: Path) -> None:
     if not path.parent.exists():
@@ -16,14 +19,14 @@ def save_meta_data(meta_data: MetaDataDump, path: Path) -> None:
         f.write(meta_data.model_dump_json(indent=4))
 
 class ProcessDataLogger:
-    def __init__(self, run_id: str, total_steps: int, metrics_config: MetricsConfig) -> None:
+    def __init__(self, run_id: str, total_steps: int, metrics_config: MetricsConfig, agent: "BaseAgent") -> None:
         # config
         self.run_id: str = run_id
         self.total_steps: int = total_steps
         self.metrics_config: MetricsConfig = metrics_config
+        self.agent: "BaseAgent" = agent
         
         # state
-        self.metrics: List[Metrics] = []
         self._grid: List[int] = []
         
         # init
@@ -33,10 +36,12 @@ class ProcessDataLogger:
     def grid(self) -> List[int]:
         return self._grid
     
-    def record(self, step: int, metrics: Metrics) -> None:
+    def record(self, metrics: Metrics) -> None:
         """Record the metrics for the agent if the step is in the grid."""
-        if step in self.grid:
-            self.metrics.append(metrics)
+        self.agent.metrics.append(metrics)
+            
+    def should_record(self, step: int) -> bool:
+        return step in self.grid
             
     def save(self, path: Path) -> None:
         dump = self.export()
@@ -49,7 +54,8 @@ class ProcessDataLogger:
         return ProcessDataDump(
             run_id=self.run_id,
             create_at=datetime.now(),
-            metrics=self.metrics,
+            rewards=self.agent.rewards_states,
+            metrics=self.agent.metrics,
         )
     
     def _build_log_grid(self) -> List[int]:
