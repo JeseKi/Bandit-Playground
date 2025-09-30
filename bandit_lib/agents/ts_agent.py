@@ -23,7 +23,7 @@ class ThompsonSamplingAlgorithm(
 
     def run(self) -> int:
         r = self.agent.rewards_states
-        beta = self.agent.rng.beta(r.alpha, r.beta)
+        beta = self.agent.nprng.beta(r.alpha, r.beta)
         index = int(beta.argmax())
         return index
 

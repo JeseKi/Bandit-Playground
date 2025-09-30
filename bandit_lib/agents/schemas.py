@@ -95,6 +95,10 @@ class AlgorithmConfig(BaseModel):
 class GreedyConfig(AlgorithmConfig):
     optimistic_initialization_enabled: bool = Field(default=False)
     optimistic_initialization_value: float = Field(default=1)
+    epsilon: float = Field(default=0.1)
+    enable_epsilon_decay: bool = Field(default=False)
+    epsilon_decay_factor: float = Field(default=0.99)
+    epsilon_min_value: float = Field(default=0.01)
     constant_step_decay_alpha: float = Field(default=0.1)
 
 

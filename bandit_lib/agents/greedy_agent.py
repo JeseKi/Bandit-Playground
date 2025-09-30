@@ -22,7 +22,12 @@ class GreedyAlgorithm(BaseAlgorithm["GreedyAgent", GreedyConfig]):
         )
 
     def run(self) -> int:
-        arm_index = int(np.argmax(self.agent.rewards_states.q_values))
+        arm_index = int(np.argmax(self.agent.rewards_states.q_values))  # greedy action
+        arm_index = self.epsilon(arm_index)  # epsilon-greedy action
+        arm_index = self.optimistic_init(arm_index)  # optimistic initialization action
+        return arm_index
+
+    def optimistic_init(self, arm_index: int) -> int:
         if not self.optimistic_inited:
             for i in range(self.agent.env.arm_num):
                 if (
@@ -31,10 +36,22 @@ class GreedyAlgorithm(BaseAlgorithm["GreedyAgent", GreedyConfig]):
                 ):
                     continue
                 self.optimistic_init_history[i] += 1
-                arm_index = i
-                break
+                return i
             self.optimistic_inited = True
+        return arm_index
 
+    def epsilon(self, arm_index) -> int:
+        if self.config.epsilon:
+            if self.agent.rng.randint(0, 1) < self.config.epsilon:
+                return self.agent.rng.randint(0, self.agent.env.arm_num)
+            if (
+                self.config.enable_epsilon_decay
+                and self.config.epsilon > self.config.epsilon_min_value
+            ):
+                self.config.epsilon *= self.config.epsilon_decay_factor
+                self.config.epsilon = max(
+                    self.config.epsilon, self.config.epsilon_min_value
+                )
         return arm_index
 
 

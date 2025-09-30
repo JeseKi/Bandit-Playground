@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import List, TypeVar, Generic, Type
 from abc import ABC, abstractmethod
+import random
 
 import numpy as np
 
@@ -53,7 +54,8 @@ class BaseAgent(ABC, Generic[AgentReward_T, AgentAlgorithm_T]):
         self.algorithm: AgentAlgorithm_T = algorithm
         self.algorithm.agent = self
         self.seed: int = seed
-        self.rng: np.random.Generator = np.random.default_rng(seed)
+        self.rng: random.Random = random.Random(seed)
+        self.nprng: np.random.Generator = np.random.default_rng(seed)
         self.metrics_config: MetricsConfig = metrics_config
         self.process_data_logger: ProcessDataLogger | None = process_data_logger
 
