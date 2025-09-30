@@ -5,7 +5,7 @@ import numpy as np
 from .base import BaseAgent, BaseAlgorithm
 from .schemas import (
     AlgorithmConfig,
-    GreedyRewardStates,
+    UCB1RewardStates,
 )
 
 from bandit_lib.env import Environment
@@ -13,21 +13,20 @@ from bandit_lib.utils import ProcessDataLogger
 from bandit_lib.agents.schemas import MetricsConfig
 
 
-class GreedyAlgorithm(BaseAlgorithm["GreedyAgent"]):
+class UCB1Algorithm(BaseAlgorithm["UCB1Agent"]):
     def __init__(self, config: AlgorithmConfig) -> None:
-        super().__init__(config, agent_type=GreedyAgent)
+        super().__init__(config, agent_type=UCB1Agent)
 
     def run(self) -> int:
-        a = int(np.argmax(self.agent.rewards_states.q_values))
-        return a
+        return int(np.argmax(self.agent.rewards_states.ucb1_values))
 
 
-class GreedyAgent(BaseAgent[GreedyRewardStates, GreedyAlgorithm]):
+class UCB1Agent(BaseAgent[UCB1RewardStates, UCB1Algorithm]):
     def __init__(
         self,
         name: str,
         env: Environment,
-        algorithm: GreedyAlgorithm,
+        algorithm: UCB1Algorithm,
         metrics_config: MetricsConfig = MetricsConfig(),
         process_data_logger: ProcessDataLogger | None = None,
         seed: int = 42,
@@ -35,7 +34,8 @@ class GreedyAgent(BaseAgent[GreedyRewardStates, GreedyAlgorithm]):
         super().__init__(
             name, env, algorithm, metrics_config, process_data_logger, seed
         )
-        self.rewards_states = GreedyRewardStates.create(
+
+        self.rewards_states = UCB1RewardStates.create(
             env.arm_num, metrics_config.sliding_window_size
         )
 
@@ -43,11 +43,12 @@ class GreedyAgent(BaseAgent[GreedyRewardStates, GreedyAlgorithm]):
         return self.algorithm.run()
 
     def pull(self, arm_index: int) -> int:
-        return self.env.get_arm_result(arm_index, self.steps)
+        return self.env.get_arm_result(arm_index, current_step=self.steps)
 
     def update(self, arm_index: int, reward: int) -> None:
         super().update(arm_index, reward)
 
+        # calculate q value
         old_q = self.rewards_states.q_values[arm_index, 0]
         count = self.rewards_states.rewards[arm_index, 0]
         q = 0
@@ -58,3 +59,10 @@ class GreedyAgent(BaseAgent[GreedyRewardStates, GreedyAlgorithm]):
         else:
             q = old_q + (reward - old_q) / count
         self.rewards_states.q_values[arm_index, 0] = q
+
+        # calculate ucb1 value
+        log_steps = np.log(self.steps) if self.steps > 0 else 0.0
+        counts_np = self.rewards_states.rewards[arm_index, 0]
+        self.rewards_states.ucb1_values = q + np.sqrt(
+            2 * log_steps / np.maximum(counts_np, 1)
+        )

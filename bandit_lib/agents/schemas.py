@@ -27,12 +27,13 @@ class BaseRewardStates(BaseModel):
             sliding_window_rewards=deque(maxlen=sliding_window_size),
         )
 
+
 class GreedyRewardStates(BaseRewardStates):
     q_values: np.ndarray = Field(
         ...,
         description="Q values of the arms, shape: (num_arms, 1) where stats[i, 0] = arm i's Q value.",
     )
-    
+
     @classmethod
     def create(cls, arm_num: int, sliding_window_size: int) -> "GreedyRewardStates":
         return cls(
@@ -40,6 +41,23 @@ class GreedyRewardStates(BaseRewardStates):
             sliding_window_rewards=deque(maxlen=sliding_window_size),
             q_values=np.zeros((arm_num, 1)),
         )
+
+
+class UCB1RewardStates(GreedyRewardStates):
+    ucb1_values: np.ndarray = Field(
+        ...,
+        description="Q values with upper confidence bound, shape: (num_arms, 1) where stats[i, 0] = arm i's UCB1 value.",
+    )
+
+    @classmethod
+    def create(cls, arm_num: int, sliding_window_size: int) -> "UCB1RewardStates":
+        return cls(
+            rewards=np.zeros((arm_num, 2)),
+            sliding_window_rewards=deque(maxlen=sliding_window_size),
+            q_values=np.zeros((arm_num, 1)),
+            ucb1_values=np.zeros((arm_num, 1)),
+        )
+
 
 class AlgorithmType(Enum):
     GREEDY = "greedy"
