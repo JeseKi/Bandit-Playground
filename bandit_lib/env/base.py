@@ -74,7 +74,7 @@ class Environment:
         self._piecewize(current_step)
 
     def _random_walk(self, current_step: int) -> None:
-        if self.config.random_walk_internal % current_step != 0:
+        if current_step != 0 and self.config.random_walk_internal % current_step != 0:
             return
 
         m = self.rng.sample(self.arms, self.config.random_walk_arm_num)
@@ -93,7 +93,7 @@ class Environment:
         self.best_arm_index = m.index(best_arm)
 
     def _piecewize(self, current_step: int) -> None:
-        if current_step % self.config.piecewize_internal != 0:
+        if current_step != 0 and current_step % self.config.piecewize_internal != 0:
             return
 
         if self.config.piecewize_method == PiecewizeMethod.DETERMINISTIC_REWARD_DRIFT:

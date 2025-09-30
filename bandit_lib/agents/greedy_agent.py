@@ -16,12 +16,19 @@ from bandit_lib.agents.schemas import MetricsConfig
 class GreedyAlgorithm(BaseAlgorithm["GreedyAgent", GreedyConfig]):
     def __init__(self, config: GreedyConfig) -> None:
         super().__init__(config, agent_type=GreedyAgent)
+        self._inited: bool = False
+        
+    def init(self) -> None:
+        if self._inited:
+            return
         self.optimistic_init_history = [0] * self.agent.env.arm_num
         self.optimistic_inited = (
             False if self.config.optimistic_initialization_enabled else True
         )
+        self._inited = True
 
     def run(self) -> int:
+        self.init()
         arm_index = int(np.argmax(self.agent.rewards_states.q_values))  # greedy action
         arm_index = self.epsilon(arm_index)  # epsilon-greedy action
         arm_index = self.optimistic_init(arm_index)  # optimistic initialization action
@@ -42,8 +49,10 @@ class GreedyAlgorithm(BaseAlgorithm["GreedyAgent", GreedyConfig]):
 
     def epsilon(self, arm_index) -> int:
         if self.config.epsilon:
-            if self.agent.rng.randint(0, 1) < self.config.epsilon:
-                return self.agent.rng.randint(0, self.agent.env.arm_num)
+            epsilon_rand = self.agent.rng.randint(0, 1)
+            if epsilon_rand < self.config.epsilon:
+                new_arm_index = self.agent.rng.randint(0, self.agent.env.arm_num - 1)
+                return new_arm_index
             if (
                 self.config.enable_epsilon_decay
                 and self.config.epsilon > self.config.epsilon_min_value

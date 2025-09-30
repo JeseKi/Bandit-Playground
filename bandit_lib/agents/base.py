@@ -18,12 +18,14 @@ Agent_T = TypeVar("Agent_T", bound="BaseAgent")
 
 class BaseAlgorithm(ABC, Generic[Agent_T, AlgorithmConfig_T]):
     def __init__(self, config: AlgorithmConfig_T, agent_type: Type[Agent_T]) -> None:
-        self._agent: Agent_T
+        self._agent: Agent_T | None= None
         self._target_type: Type[Agent_T] = agent_type
         self.config: AlgorithmConfig_T = config
 
     @property
     def agent(self) -> Agent_T:
+        if self._agent is None:
+            raise ValueError("Agent is not set")
         return self._agent
 
     @agent.setter
