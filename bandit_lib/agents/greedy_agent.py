@@ -17,7 +17,7 @@ class GreedyAlgorithm(BaseAlgorithm["GreedyAgent", GreedyConfig]):
     def __init__(self, config: GreedyConfig) -> None:
         super().__init__(config, agent_type=GreedyAgent)
         self._inited: bool = False
-        
+
     def init(self) -> None:
         if self._inited:
             return

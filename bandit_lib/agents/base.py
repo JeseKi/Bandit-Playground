@@ -18,7 +18,7 @@ Agent_T = TypeVar("Agent_T", bound="BaseAgent")
 
 class BaseAlgorithm(ABC, Generic[Agent_T, AlgorithmConfig_T]):
     def __init__(self, config: AlgorithmConfig_T, agent_type: Type[Agent_T]) -> None:
-        self._agent: Agent_T | None= None
+        self._agent: Agent_T | None = None
         self._target_type: Type[Agent_T] = agent_type
         self.config: AlgorithmConfig_T = config
 
