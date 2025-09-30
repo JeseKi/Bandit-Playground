@@ -6,3 +6,4 @@ numpy
 plotly
 pip-tools
 pydantic
+nbformat
