@@ -53,12 +53,12 @@ class ThompsonSamplingAgent(
 
     def update(self, arm_index: int, reward: int) -> None:
         super().update(arm_index, reward)
-        
+
         # decay alpha and beta
         if self.algorithm.config.enable_decay_alpha:
             self.rewards_states.alpha *= self.algorithm.config.discount_factor
             self.rewards_states.beta *= self.algorithm.config.discount_factor
-            
+
             # handle underflow
             underflow_mask_alpha = self.rewards_states.alpha < 1e-10
             underflow_mask_beta = self.rewards_states.beta < 1e-10
