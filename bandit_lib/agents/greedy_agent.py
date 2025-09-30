@@ -16,10 +16,26 @@ from bandit_lib.agents.schemas import MetricsConfig
 class GreedyAlgorithm(BaseAlgorithm["GreedyAgent"]):
     def __init__(self, config: AlgorithmConfig) -> None:
         super().__init__(config, agent_type=GreedyAgent)
+        self.optimistic_init_history = [0] * self.agent.env.arm_num
+        self.optimistic_inited = (
+            False if self.config.optimistic_initialization_enabled else True
+        )
 
     def run(self) -> int:
-        a = int(np.argmax(self.agent.rewards_states.q_values))
-        return a
+        arm_index = int(np.argmax(self.agent.rewards_states.q_values))
+        if not self.optimistic_inited:
+            for i in range(self.agent.env.arm_num):
+                if (
+                    self.optimistic_init_history[i]
+                    >= self.config.optimistic_initialization_value
+                ):
+                    continue
+                self.optimistic_init_history[i] += 1
+                arm_index = i
+                break
+            self.optimistic_inited = True
+
+        return arm_index
 
 
 class GreedyAgent(BaseAgent[GreedyRewardStates, GreedyAlgorithm]):
