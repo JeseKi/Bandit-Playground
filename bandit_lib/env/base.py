@@ -22,6 +22,7 @@ class Environment:
         self,
         arm_num: int,
         config: EnvConfig = EnvConfig(),
+        seed: int = 42,
     ) -> None:
         """Initialize the environment
 
@@ -30,8 +31,9 @@ class Environment:
             config (EnvConfig): Configuration for the environment.
         """
         # config
-        self.rng: random.Random = random.Random(config.seed)
-        self.nprng: np.random.Generator = np.random.default_rng(config.seed)
+        self.seed: int = seed
+        self.rng: random.Random = random.Random(self.seed)
+        self.nprng: np.random.Generator = np.random.default_rng(self.seed)
         self.config: EnvConfig = config
 
         # state
