@@ -76,8 +76,8 @@ class ThompsonSamplingRewardStates(BaseRewardStates):
         return cls(
             rewards=np.zeros((arm_num, 2)),
             sliding_window_rewards=deque(maxlen=sliding_window_size),
-            alpha=np.zeros((arm_num, 1)),
-            beta=np.zeros((arm_num, 1)),
+            alpha=np.ones((arm_num, 1)),
+            beta=np.ones((arm_num, 1)),
         )
 
 

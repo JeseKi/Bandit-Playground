@@ -62,7 +62,7 @@ class UCB1Agent(BaseAgent[UCB1RewardStates, UCB1Algorithm]):
 
         # calculate ucb1 value
         log_steps = np.log(self.steps) if self.steps > 0 else 0.0
-        counts_np = self.rewards_states.rewards[arm_index, 0]
-        self.rewards_states.ucb1_values = q + np.sqrt(
-            2 * log_steps / np.maximum(counts_np, 1)
+        counts_np = self.rewards_states.rewards[:, 0]
+        self.rewards_states.ucb1_values = self.rewards_states.q_values + np.sqrt(
+            2 * log_steps / np.maximum(counts_np[:, np.newaxis], 1)
         )
