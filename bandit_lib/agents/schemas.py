@@ -115,18 +115,18 @@ class Metrics(BaseModel):
     In order to use the class to collect metrics while not training, some fields are initialized with -1.
     """
 
-    current_step: int = Field(
+    current_step: float = Field(
         default=-1, description="The step number of the metrics when it is collected."
     )
     regret_rate: float
     regret: float
     reward_rate: float
-    reward: int
+    reward: float
     sliding_window_reward_rate: float = Field(
         default=-1, description="A reward rate that is in any sliding window."
     )
     optimal_arm_rate: float
-    convergence_step: int = Field(
+    convergence_step: float = Field(
         default=-1,
         description="Using in static environment. Step count when the agent converges to the optimal arm.",
     )
@@ -136,7 +136,7 @@ class MetricsConfig(BaseModel):
     metrics_history_size: int = Field(default=500)
     sliding_window_size: int = Field(default=1000)
     optimal_arm_rate_threshold: float = Field(default=0.95)
-    min_convergence_step: int = Field(
-        default=100,
+    min_convergence_step: float = Field(
+        default=100.0,
         description="The minimum step count when the agent converges to the optimal arm.",
     )
