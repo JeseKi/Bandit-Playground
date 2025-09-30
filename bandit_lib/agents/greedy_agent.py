@@ -74,9 +74,7 @@ class GreedyAgent(BaseAgent[GreedyRewardStates, GreedyAlgorithm]):
         process_data_logger: ProcessDataLogger | None = None,
         seed: int = 42,
     ) -> None:
-        super().__init__(
-            name, env, algorithm, metrics_config, process_data_logger, seed
-        )
+        super().__init__(name, env, algorithm, metrics_config, seed)
         self.rewards_states = GreedyRewardStates.create(
             env.arm_num, metrics_config.sliding_window_size
         )

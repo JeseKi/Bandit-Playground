@@ -6,7 +6,7 @@ from typing import List, TYPE_CHECKING
 
 import math
 
-from bandit_lib.agents.schemas import Metrics, MetricsConfig
+from bandit_lib.agents.schemas import Metrics
 from .schemas import ProcessDataDump, MetaDataDump
 
 if TYPE_CHECKING:
@@ -20,18 +20,23 @@ def save_meta_data(meta_data: MetaDataDump, path: Path) -> None:
         f.write(meta_data.model_dump_json(indent=4))
 
 
+def save_process_data(process_data: ProcessDataDump, path: Path) -> None:
+    if not path.parent.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        f.write(process_data.model_dump_json(indent=4))
+
+
 class ProcessDataLogger:
     def __init__(
         self,
         run_id: str,
         total_steps: int,
-        metrics_config: MetricsConfig,
         agent: "BaseAgent",
     ) -> None:
         # config
         self.run_id: str = run_id
         self.total_steps: int = total_steps
-        self.metrics_config: MetricsConfig = metrics_config
         self.agent: "BaseAgent" = agent
 
         # state
@@ -69,15 +74,17 @@ class ProcessDataLogger:
     def _build_log_grid(self) -> List[int]:
         if self.total_steps <= 0:
             raise ValueError("Total steps must be greater than 0")
-        if self.metrics_config.metrics_history_size <= 0:
+        if self.agent.metrics_config.metrics_history_size <= 0:
             raise ValueError("Metrics history size must be greater than 0")
 
         logT = 0.0 if self.total_steps == 1 else math.log10(self.total_steps)
-        if self.metrics_config.metrics_history_size == 1:
+        if self.agent.metrics_config.metrics_history_size == 1:
             raw = [0.0]
         else:
-            step = logT / (self.metrics_config.metrics_history_size - 1)
-            raw = [i * step for i in range(self.metrics_config.metrics_history_size)]
+            step = logT / (self.agent.metrics_config.metrics_history_size - 1)
+            raw = [
+                i * step for i in range(self.agent.metrics_config.metrics_history_size)
+            ]
 
         grid = [int(math.ceil(10**v)) for v in raw]
         grid.append(1)

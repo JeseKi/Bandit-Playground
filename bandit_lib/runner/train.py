@@ -14,9 +14,10 @@ from bandit_lib.agents import (
     GreedyConfig,
     UCB1Config,
     ThompsonSamplingConfig,
+    MetricsConfig,
 )
 from bandit_lib.agents.base import Agent_T
-
+from bandit_lib.utils import ProcessDataLogger
 from bandit_lib.env import Environment, EnvConfig
 
 
@@ -25,13 +26,15 @@ def agent_factory(
     name: str,
     env: Environment,
     algorithm: BaseAlgorithm,
-    seed: int,
+    metrics_config: MetricsConfig = MetricsConfig(),
+    seed: int = 42,
 ) -> Agent_T:
     return agent_type(
         seed=seed,
         name=name,
         env=env,
         algorithm=algorithm,
+        metrics_config=metrics_config,
     )
 
 
@@ -53,6 +56,7 @@ def algorithm_factory(
 
 
 def batch_train(
+    run_id: str,
     agent_type: Type[Agent_T],
     name: str,
     arm_num: int,
@@ -61,6 +65,7 @@ def batch_train(
     algorithm_config: AlgorithmConfig,
     repeat_times: int,
     step_num: int,
+    metrics_config: MetricsConfig = MetricsConfig(),
     base_seed: int = 42,
     worker_num: int = 4,
 ) -> Tuple[List[Agent_T], BaseRewardStates, List[Metrics]]:
@@ -76,7 +81,15 @@ def batch_train(
             name=name,
             env=env,
             algorithm=algorithm_factory(algorithm_type, algorithm_config),
+            metrics_config=metrics_config,
             seed=base_seed + i * env_seed_offset,
+        )
+        agent.set_logger(
+            logger=ProcessDataLogger(
+                run_id=run_id,
+                total_steps=step_num,
+                agent=agent,
+            )
         )
         agents.append(agent)
 
@@ -107,24 +120,26 @@ def calculate_metrics(
     )
     rewards_states.rewards = np.mean([reward.rewards for reward in rewards], axis=0)
     metrics_list: List[List[Metrics]] = [result[2] for result in results]
-    avg_metrics: List[Metrics] = []
-    for metrics in metrics_list:
-        steps: Set[float] = set()
-        for metric in metrics:
-            steps.add(metric.current_step)
-        if len(steps) >= 2:
-            raise ValueError("Metrics must have the same step number.")
-        avg_regret_rate = np.mean([metric.regret_rate for metric in metrics])
-        avg_regret = np.mean([metric.regret for metric in metrics])
-        avg_reward_rate = np.mean([metric.reward_rate for metric in metrics])
-        avg_reward = np.mean([metric.reward for metric in metrics])
-        avg_optimal_arm_rate = np.mean([metric.optimal_arm_rate for metric in metrics])
-        avg_sliding_window_reward_rate = np.mean(
-            [metric.sliding_window_reward_rate for metric in metrics]
+
+    metrics_history_avg: List[Metrics] = []
+    for step_metrics in zip(*metrics_list):
+        step_metrics = cast(Tuple[Metrics], step_metrics)
+        avg_regret_rate = np.mean([metric.regret_rate for metric in step_metrics])
+        avg_regret = np.mean([metric.regret for metric in step_metrics])
+        avg_reward_rate = np.mean([metric.reward_rate for metric in step_metrics])
+        avg_reward = np.mean([metric.reward for metric in step_metrics])
+        avg_optimal_arm_rate = np.mean(
+            [metric.optimal_arm_rate for metric in step_metrics]
         )
-        avg_convergence_step = np.mean([metric.convergence_step for metric in metrics])
-        avg_metrics.append(
+        avg_sliding_window_reward_rate = np.mean(
+            [metric.sliding_window_reward_rate for metric in step_metrics]
+        )
+        avg_convergence_step = np.mean(
+            [metric.convergence_step for metric in step_metrics]
+        )
+        metrics_history_avg.append(
             Metrics(
+                current_step=float(step_metrics[0].current_step),
                 regret_rate=float(avg_regret_rate),
                 regret=float(avg_regret),
                 reward_rate=float(avg_reward_rate),
@@ -134,4 +149,4 @@ def calculate_metrics(
                 convergence_step=float(avg_convergence_step),
             )
         )
-    return rewards_states, avg_metrics
+    return rewards_states, metrics_history_avg

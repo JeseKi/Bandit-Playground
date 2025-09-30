@@ -11,7 +11,6 @@ from .schemas import (
 )
 
 from bandit_lib.env import Environment
-from bandit_lib.utils import ProcessDataLogger
 from bandit_lib.agents.schemas import MetricsConfig
 
 
@@ -37,12 +36,9 @@ class ThompsonSamplingAgent(
         env: Environment,
         algorithm: ThompsonSamplingAlgorithm,
         metrics_config: MetricsConfig = MetricsConfig(),
-        process_data_logger: ProcessDataLogger | None = None,
         seed: int = 42,
     ) -> None:
-        super().__init__(
-            name, env, algorithm, metrics_config, process_data_logger, seed
-        )
+        super().__init__(name, env, algorithm, metrics_config, seed)
         self.rewards_states = ThompsonSamplingRewardStates.create(
             env.arm_num, metrics_config.sliding_window_size
         )

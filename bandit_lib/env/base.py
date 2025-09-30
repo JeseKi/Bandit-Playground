@@ -106,6 +106,8 @@ class Environment:
             raise ValueError(
                 f"Invalid piecewize method: {self.config.piecewize_method}"
             )
+        best_arm = max(self.arms, key=lambda x: x.reward_probability)
+        self.best_arm_index = self.arms.index(best_arm)
 
     def _reward_permutation(self) -> None:
         arms_sorted = sorted(self.arms, key=lambda m: m.reward_probability)

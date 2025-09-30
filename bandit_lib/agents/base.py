@@ -46,7 +46,6 @@ class BaseAgent(ABC, Generic[AgentReward_T, AgentAlgorithm_T]):
         env: Environment,
         algorithm: AgentAlgorithm_T,
         metrics_config: MetricsConfig = MetricsConfig(),
-        process_data_logger: ProcessDataLogger | None = None,
         seed: int = 42,
     ) -> None:
         "self.rewards_states must be set in the subclass. Such as `self.rewards_states = BaseRewardStates.create(self.env.arm_num)`."
@@ -59,20 +58,21 @@ class BaseAgent(ABC, Generic[AgentReward_T, AgentAlgorithm_T]):
         self.rng: random.Random = random.Random(seed)
         self.nprng: np.random.Generator = np.random.default_rng(seed)
         self.metrics_config: MetricsConfig = metrics_config
-        self.process_data_logger: ProcessDataLogger | None = process_data_logger
 
         # state
         self.steps: int = 0
         self.optimal_arm_chosen_times: int = 0
         self.metrics: List[Metrics] = []
         self.convergence_step: int = -1
+        self.process_data_logger: ProcessDataLogger | None
 
         self._convergenced: bool = False
 
         # init
         self.rewards_states: AgentReward_T  # must be set in the subclass
-        if self.process_data_logger is not None:
-            self.process_data_logger.agent = self
+
+    def set_logger(self, logger: ProcessDataLogger) -> None:
+        self.process_data_logger = logger
 
     def step(self) -> None:
         """Step the agent."""
@@ -133,10 +133,18 @@ class BaseAgent(ABC, Generic[AgentReward_T, AgentAlgorithm_T]):
 
     def regret_rate(self) -> float:
         """Calculate the regret rate of the agent."""
-        if self.steps == 0:
+        try:
+            if self.steps == 0:
+                return 0
+            best_reward = self.env.best_arm.reward_probability * self.steps
+            return self.regret() / best_reward
+
+        except ZeroDivisionError:
+            print("ZeroDivisionError", self.steps, self.env.best_arm.reward_probability)
+            for arm in self.env.arms:
+                if arm.reward_probability == 0:
+                    print(arm.reward_probability, self.env.arms.index(arm))
             return 0
-        best_reward = self.env.best_arm.reward_probability * self.steps
-        return self.regret() / best_reward
 
     def reward_rate(self) -> float:
         """Calculate the reward rate of the agent."""

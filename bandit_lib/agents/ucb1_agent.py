@@ -9,7 +9,6 @@ from .schemas import (
 )
 
 from bandit_lib.env import Environment
-from bandit_lib.utils import ProcessDataLogger
 from bandit_lib.agents.schemas import MetricsConfig
 
 
@@ -28,12 +27,9 @@ class UCB1Agent(BaseAgent[UCB1RewardStates, UCB1Algorithm]):
         env: Environment,
         algorithm: UCB1Algorithm,
         metrics_config: MetricsConfig = MetricsConfig(),
-        process_data_logger: ProcessDataLogger | None = None,
         seed: int = 42,
     ) -> None:
-        super().__init__(
-            name, env, algorithm, metrics_config, process_data_logger, seed
-        )
+        super().__init__(name, env, algorithm, metrics_config, seed)
 
         self.rewards_states = UCB1RewardStates.create(
             env.arm_num, metrics_config.sliding_window_size
