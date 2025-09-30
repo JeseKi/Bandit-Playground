@@ -89,10 +89,20 @@ class AlgorithmType(Enum):
 
 class AlgorithmConfig(BaseModel):
     algorithm_type: AlgorithmType
+    enable_decay_alpha: bool = Field(default=False)
+
+
+class GreedyConfig(AlgorithmConfig):
     optimistic_initialization_enabled: bool = Field(default=False)
     optimistic_initialization_value: float = Field(default=1)
-    enable_decay_alpha: bool = Field(default=False)
     constant_step_decay_alpha: float = Field(default=0.1)
+
+
+class UCB1Config(AlgorithmConfig):
+    constant_step_decay_alpha: float = Field(default=0.1)
+
+
+class ThompsonSamplingConfig(AlgorithmConfig):
     discount_factor: float = Field(default=0.9)
 
 

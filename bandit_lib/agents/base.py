@@ -11,14 +11,15 @@ from bandit_lib.utils import ProcessDataLogger
 
 AgentReward_T = TypeVar("AgentReward_T", bound=BaseRewardStates)
 AgentAlgorithm_T = TypeVar("AgentAlgorithm_T", bound="BaseAlgorithm")
+AlgorithmConfig_T = TypeVar("AlgorithmConfig_T", bound=AlgorithmConfig)
 Agent_T = TypeVar("Agent_T", bound="BaseAgent")
 
 
-class BaseAlgorithm(ABC, Generic[Agent_T]):
-    def __init__(self, config: AlgorithmConfig, agent_type: Type[Agent_T]) -> None:
+class BaseAlgorithm(ABC, Generic[Agent_T, AlgorithmConfig_T]):
+    def __init__(self, config: AlgorithmConfig_T, agent_type: Type[Agent_T]) -> None:
         self._agent: Agent_T
         self._target_type: Type[Agent_T] = agent_type
-        self.config: AlgorithmConfig = config
+        self.config: AlgorithmConfig_T = config
 
     @property
     def agent(self) -> Agent_T:

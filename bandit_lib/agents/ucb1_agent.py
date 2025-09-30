@@ -4,7 +4,7 @@ import numpy as np
 
 from .base import BaseAgent, BaseAlgorithm
 from .schemas import (
-    AlgorithmConfig,
+    UCB1Config,
     UCB1RewardStates,
 )
 
@@ -13,8 +13,8 @@ from bandit_lib.utils import ProcessDataLogger
 from bandit_lib.agents.schemas import MetricsConfig
 
 
-class UCB1Algorithm(BaseAlgorithm["UCB1Agent"]):
-    def __init__(self, config: AlgorithmConfig) -> None:
+class UCB1Algorithm(BaseAlgorithm["UCB1Agent", UCB1Config]):
+    def __init__(self, config: UCB1Config) -> None:
         super().__init__(config, agent_type=UCB1Agent)
 
     def run(self) -> int:

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from .base import BaseAgent, BaseAlgorithm
 from .schemas import (
-    AlgorithmConfig,
+    ThompsonSamplingConfig,
     ThompsonSamplingRewardStates,
 )
 
@@ -15,8 +15,10 @@ from bandit_lib.utils import ProcessDataLogger
 from bandit_lib.agents.schemas import MetricsConfig
 
 
-class ThompsonSamplingAlgorithm(BaseAlgorithm["ThompsonSamplingAgent"]):
-    def __init__(self, config: AlgorithmConfig) -> None:
+class ThompsonSamplingAlgorithm(
+    BaseAlgorithm["ThompsonSamplingAgent", ThompsonSamplingConfig]
+):
+    def __init__(self, config: ThompsonSamplingConfig) -> None:
         super().__init__(config, agent_type=ThompsonSamplingAgent)
 
     def run(self) -> int:

@@ -4,7 +4,7 @@ import numpy as np
 
 from .base import BaseAgent, BaseAlgorithm
 from .schemas import (
-    AlgorithmConfig,
+    GreedyConfig,
     GreedyRewardStates,
 )
 
@@ -13,8 +13,8 @@ from bandit_lib.utils import ProcessDataLogger
 from bandit_lib.agents.schemas import MetricsConfig
 
 
-class GreedyAlgorithm(BaseAlgorithm["GreedyAgent"]):
-    def __init__(self, config: AlgorithmConfig) -> None:
+class GreedyAlgorithm(BaseAlgorithm["GreedyAgent", GreedyConfig]):
+    def __init__(self, config: GreedyConfig) -> None:
         super().__init__(config, agent_type=GreedyAgent)
         self.optimistic_init_history = [0] * self.agent.env.arm_num
         self.optimistic_inited = (
