@@ -59,6 +59,28 @@ class UCB1RewardStates(GreedyRewardStates):
         )
 
 
+class ThompsonSamplingRewardStates(BaseRewardStates):
+    alpha: np.ndarray = Field(
+        ...,
+        description="Alpha values of the arms, shape: (num_arms, 1) where stats[i, 0] = arm i's alpha value.",
+    )
+    beta: np.ndarray = Field(
+        ...,
+        description="Beta values of the arms, shape: (num_arms, 1) where stats[i, 0] = arm i's beta value.",
+    )
+
+    @classmethod
+    def create(
+        cls, arm_num: int, sliding_window_size: int
+    ) -> "ThompsonSamplingRewardStates":
+        return cls(
+            rewards=np.zeros((arm_num, 2)),
+            sliding_window_rewards=deque(maxlen=sliding_window_size),
+            alpha=np.zeros((arm_num, 1)),
+            beta=np.zeros((arm_num, 1)),
+        )
+
+
 class AlgorithmType(Enum):
     GREEDY = "greedy"
     UCB1 = "ucb1"
