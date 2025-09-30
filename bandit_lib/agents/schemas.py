@@ -9,7 +9,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class BaseRewardStates(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        json_encoders={
+            np.ndarray: lambda v: v.tolist()
+        }
+    )
 
     rewards: np.ndarray = Field(
         ...,
