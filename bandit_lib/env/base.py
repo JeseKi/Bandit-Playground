@@ -72,6 +72,8 @@ class Environment:
 
         self._random_walk(current_step)
         self._piecewize(current_step)
+        best_arm = max(self.arms, key=lambda x: x.reward_probability)
+        self.best_arm_index = self.arms.index(best_arm)
 
     def _random_walk(self, current_step: int) -> None:
         if current_step != 0 and self.config.random_walk_internal % current_step != 0:
@@ -89,9 +91,6 @@ class Environment:
                 r = machine.reward_probability - sample
             machine.reward_probability = r
 
-        best_arm = max(m, key=lambda x: x.reward_probability)
-        self.best_arm_index = m.index(best_arm)
-
     def _piecewize(self, current_step: int) -> None:
         if current_step != 0 and current_step % self.config.piecewize_internal != 0:
             return
@@ -106,8 +105,6 @@ class Environment:
             raise ValueError(
                 f"Invalid piecewize method: {self.config.piecewize_method}"
             )
-        best_arm = max(self.arms, key=lambda x: x.reward_probability)
-        self.best_arm_index = self.arms.index(best_arm)
 
     def _reward_permutation(self) -> None:
         arms_sorted = sorted(self.arms, key=lambda m: m.reward_probability)
