@@ -39,20 +39,19 @@ def agent_factory(
 
 
 def algorithm_factory(
-    algorithm_type: AlgorithmType,
     algorithm_config: AlgorithmConfig,
 ) -> BaseAlgorithm:
-    if algorithm_type == AlgorithmType.GREEDY:
+    if algorithm_config.algorithm_type == AlgorithmType.GREEDY:
         algorithm_config = cast(GreedyConfig, algorithm_config)
         return GreedyAlgorithm(config=algorithm_config)
-    elif algorithm_type == AlgorithmType.UCB1:
+    elif algorithm_config.algorithm_type == AlgorithmType.UCB1:
         algorithm_config = cast(UCB1Config, algorithm_config)
         return UCB1Algorithm(config=algorithm_config)
-    elif algorithm_type == AlgorithmType.THOMPSON_SAMPLING:
+    elif algorithm_config.algorithm_type == AlgorithmType.THOMPSON_SAMPLING:
         algorithm_config = cast(ThompsonSamplingConfig, algorithm_config)
         return ThompsonSamplingAlgorithm(config=algorithm_config)
     else:
-        raise ValueError(f"Invalid algorithm type: {algorithm_type}")
+        raise ValueError(f"Invalid algorithm type: {algorithm_config.algorithm_type}")
 
 
 def batch_train(
@@ -61,7 +60,6 @@ def batch_train(
     name: str,
     arm_num: int,
     env_config: EnvConfig,
-    algorithm_type: AlgorithmType,
     algorithm_config: AlgorithmConfig,
     repeat_times: int,
     step_num: int,
@@ -80,7 +78,7 @@ def batch_train(
             agent_type=agent_type,
             name=name,
             env=env,
-            algorithm=algorithm_factory(algorithm_type, algorithm_config),
+            algorithm=algorithm_factory(algorithm_config=algorithm_config),
             metrics_config=metrics_config,
             seed=base_seed + i * env_seed_offset,
         )

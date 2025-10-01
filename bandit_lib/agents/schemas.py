@@ -98,6 +98,7 @@ class AlgorithmConfig(BaseModel):
 
 
 class GreedyConfig(AlgorithmConfig):
+    algorithm_type: AlgorithmType = AlgorithmType.GREEDY
     optimistic_initialization_enabled: bool = Field(default=False)
     optimistic_initialization_value: float = Field(default=1)
     epsilon: float = Field(default=0.1)
@@ -108,10 +109,12 @@ class GreedyConfig(AlgorithmConfig):
 
 
 class UCB1Config(AlgorithmConfig):
+    algorithm_type: AlgorithmType = AlgorithmType.UCB1
     constant_step_decay_alpha: float = Field(default=0.1)
 
 
 class ThompsonSamplingConfig(AlgorithmConfig):
+    algorithm_type: AlgorithmType = AlgorithmType.THOMPSON_SAMPLING
     discount_factor: float = Field(default=0.9)
 
 
