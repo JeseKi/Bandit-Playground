@@ -96,8 +96,9 @@ def batch_train(
             train, zip(agents, [step_num] * repeat_times)
         )
 
+    trained_agents: List[Agent_T] = [result[0] for result in results]
     rewards_states, avg_metrics = calculate_metrics(results)
-    return agents, rewards_states, avg_metrics
+    return trained_agents, rewards_states, avg_metrics
 
 
 def train(
