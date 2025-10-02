@@ -1,4 +1,4 @@
-from typing import List, Set, Tuple, Type, cast
+from typing import List, Tuple, Type, cast
 from multiprocessing import Pool
 import numpy as np
 

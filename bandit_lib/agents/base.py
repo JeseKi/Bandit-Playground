@@ -143,7 +143,11 @@ class BaseAgent(ABC, Generic[AgentReward_T, AgentAlgorithm_T]):
             print("ZeroDivisionError", self.steps, self.env.best_arm.reward_probability)
             for arm in self.env.arms:
                 if arm.reward_probability == 0:
-                    print(arm.reward_probability, self.env.arms.index(arm), [arm.reward_probability for arm in self.env.arms])
+                    print(
+                        arm.reward_probability,
+                        self.env.arms.index(arm),
+                        [arm.reward_probability for arm in self.env.arms],
+                    )
             return 0
 
     def reward_rate(self) -> float:
