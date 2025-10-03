@@ -121,8 +121,8 @@ def plot_metrics_history(
         if final_value is not None:
             fig.add_hline(
                 y=final_value,
-                row=str(row),  # type: ignore
-                col=str(col),  # type: ignore
+                row=row,  # type: ignore
+                col=col,  # type: ignore
                 line_dash="dash",
                 line_color="red",
                 annotation_text=f"Final value: {final_value:.4f}",
