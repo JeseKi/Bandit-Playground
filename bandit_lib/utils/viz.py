@@ -59,8 +59,8 @@ def plot_metrics_history(
     file_name: Path,
     agents: Sequence["BaseAgent"],
     x_log: bool = False,
-    width: int = 1000,
-    height: int = 1000,
+    width: int = 1500,
+    height: int = 1500,
     scale: int = 2,
 ) -> go.Figure:
     """Plot the metrics history with plotly
