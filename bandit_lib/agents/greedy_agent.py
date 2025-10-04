@@ -9,7 +9,6 @@ from .schemas import (
 )
 
 from bandit_lib.env import Environment
-from bandit_lib.utils import ProcessDataLogger
 from bandit_lib.agents.schemas import MetricsConfig
 
 
@@ -71,7 +70,6 @@ class GreedyAgent(BaseAgent[GreedyRewardStates, GreedyAlgorithm]):
         env: Environment,
         algorithm: GreedyAlgorithm,
         metrics_config: MetricsConfig = MetricsConfig(),
-        process_data_logger: ProcessDataLogger | None = None,
         seed: int = 42,
     ) -> None:
         super().__init__(name, env, algorithm, metrics_config, seed)
