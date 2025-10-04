@@ -59,6 +59,7 @@ def plot_metrics_history(
     file_name: Path,
     agents: Sequence["BaseAgent"],
     x_log: bool = False,
+    metrics_to_plot: List[str] = _METRIC_LABELS,
     width: int = 1500,
     height: int = 1500,
     scale: int = 2,
@@ -71,6 +72,7 @@ def plot_metrics_history(
         file_name: The name of the file to save the plot.
         agents: The agents to plot, for calculating the static convergence rate.
         x_log: Whether to use a logarithmic x-axis.
+        metrics_to_plot: The metrics to plot.
         width: The width of the image.
         height: The height of the image.
         scale: The scale of the image.
@@ -79,22 +81,18 @@ def plot_metrics_history(
         raise ValueError("metrics_history or agents is empty")
 
     steps = [metric.current_step for metric in metrics_history]
-
-    canonical_metrics = _METRIC_LABELS
-    if agents[0].env.config.enable_dynamic:
-        canonical_metrics.remove("convergence_rate")
-
-    rows, cols = _determine_layout(len(canonical_metrics))
+    
+    rows, cols = _determine_layout(len(metrics_to_plot))
 
     fig = make_subplots(
         rows=rows,
         cols=cols,
-        subplot_titles=canonical_metrics,
+        subplot_titles=metrics_to_plot,
         horizontal_spacing=0.08,
         vertical_spacing=0.12,
     )
 
-    for idx, metric_key in enumerate(canonical_metrics):
+    for idx, metric_key in enumerate(metrics_to_plot):
         row = idx // cols + 1
         col = idx % cols + 1
 
@@ -166,3 +164,6 @@ def plot_metrics_history(
         output_path = fallback_path
 
     return fig
+
+def get_metric_labels() -> List[str]:
+    return _METRIC_LABELS.copy()
