@@ -19,7 +19,9 @@ class ProcessDataDump(BaseModel):
     run_id: str
     create_at: datetime = Field(default_factory=datetime.now)
     rewards: BaseRewardStates
-    metrics: List[Metrics]
+    metrics: Metrics
+    metrics_history_avg: List[Metrics] = Field(default_factory=list)
+    metrics_history: List[List[Metrics]] = Field(default_factory=list)
 
 
 class MetaDataDump(BaseModel):
