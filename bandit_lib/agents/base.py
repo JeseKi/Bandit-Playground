@@ -105,7 +105,8 @@ class BaseAgent(ABC, Generic[AgentReward_T, AgentAlgorithm_T]):
             not self.env.config.enable_dynamic
             and not self._convergenced
             and self.steps >= self.metrics_config.min_convergence_step
-            and self.optimal_arm_rate() >= self.metrics_config.optimal_arm_rate_threshold
+            and self.optimal_arm_rate()
+            >= self.metrics_config.optimal_arm_rate_threshold
         ):
             self._convergenced = True
             self.convergence_step = self.steps

@@ -3,8 +3,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Sequence, Tuple, TYPE_CHECKING
 import math
 
-from plotly.subplots import make_subplots # type: ignore
-import plotly.graph_objects as go # type: ignore
+from plotly.subplots import make_subplots  # type: ignore
+import plotly.graph_objects as go  # type: ignore
 
 if TYPE_CHECKING:
     from bandit_lib.agents.base import BaseAgent
