@@ -8,3 +8,4 @@ pip-tools
 pydantic
 nbformat
 kaleido
+tqdm

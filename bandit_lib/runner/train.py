@@ -1,6 +1,7 @@
 from typing import List, Tuple, Type, cast
 from multiprocessing import Pool
 import numpy as np
+from tqdm import tqdm
 
 from bandit_lib.agents import (
     BaseRewardStates,
@@ -92,9 +93,11 @@ def batch_train(
         agents.append(agent)
 
     with Pool(worker_num) as p:
-        results: List[Tuple[Agent_T, BaseRewardStates, List[Metrics]]] = p.starmap(
-            train, zip(agents, [step_num] * repeat_times)
-        )
+        async_results = [p.apply_async(train, (agent, step_num)) for agent in agents]
+        results: List[Tuple[Agent_T, BaseRewardStates, List[Metrics]]] = [
+            async_result.get()
+            for async_result in tqdm(async_results, desc="Training agents")
+        ]
 
     trained_agents: List[Agent_T] = [result[0] for result in results]
     rewards_states, avg_metrics = calculate_metrics(results)

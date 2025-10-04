@@ -94,6 +94,8 @@ tomli==2.2.1
     #   mypy
     #   pip-tools
     #   pytest
+tqdm==4.67.1
+    # via -r requirements.in
 traitlets==5.14.3
     # via
     #   jupyter-core
