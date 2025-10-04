@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class PiecewizeMethod(Enum):
+    NONE = "none"
     PERMUTATION = "permutation"
     RESET = "reset"
     DETERMINISTIC_REWARD_DRIFT = "deterministic_reward_drift"
@@ -28,5 +29,5 @@ class EnvConfig(BaseModel):
         default=1, description="Internal for piecewize method", ge=1
     )
     piecewize_method: PiecewizeMethod = Field(
-        default=PiecewizeMethod.PERMUTATION, description="Method for piecewize method"
+        default=PiecewizeMethod.NONE, description="Method for piecewize method"
     )

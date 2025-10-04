@@ -95,7 +95,9 @@ class Environment:
         if current_step != 0 and current_step % self.config.piecewize_internal != 0:
             return
 
-        if self.config.piecewize_method == PiecewizeMethod.DETERMINISTIC_REWARD_DRIFT:
+        if self.config.piecewize_method == PiecewizeMethod.NONE:
+            return
+        elif self.config.piecewize_method == PiecewizeMethod.DETERMINISTIC_REWARD_DRIFT:
             self._deterministic_reward_drift()
         elif self.config.piecewize_method == PiecewizeMethod.PERMUTATION:
             self._reward_permutation()
