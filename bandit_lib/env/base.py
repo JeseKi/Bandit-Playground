@@ -76,7 +76,7 @@ class Environment:
         self.best_arm_index = self.arms.index(best_arm)
 
     def _random_walk(self, current_step: int) -> None:
-        if current_step != 0 and self.config.random_walk_internal % current_step != 0:
+        if current_step != 0 and current_step % self.config.random_walk_internal != 0:
             return
 
         m = self.rng.sample(self.arms, self.config.random_walk_arm_num)
