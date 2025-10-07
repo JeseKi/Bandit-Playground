@@ -109,11 +109,11 @@ class Environment:
             )
 
     def _reward_permutation(self) -> None:
-        arms_sorted = sorted(self.arms, key=lambda m: m.reward_probability)
-        n = len(arms_sorted)
+        current_probabilities = [arm.reward_probability for arm in self.arms]
+        self.rng.shuffle(current_probabilities)
 
-        for i, arm in enumerate(arms_sorted):
-            arm.reward_probability = (n - 1 - i) / n
+        for arm, new_probability in zip(self.arms, current_probabilities):
+            arm.reward_probability = new_probability
 
     def _deterministic_reward_drift(self) -> None:
         for arm in self.arms:
