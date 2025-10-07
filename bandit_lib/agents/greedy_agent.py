@@ -89,10 +89,12 @@ class GreedyAgent(BaseAgent[GreedyRewardStates, GreedyAlgorithm]):
         old_q = self.rewards_states.q_values[arm_index, 0]
         count = self.rewards_states.rewards[arm_index, 0]
         q = 0
-        if self.algorithm.config.enable_decay_alpha:
-            q = old_q + self.algorithm.config.constant_step_decay_alpha * (
-                reward - old_q
-            )
+
+        error = reward - old_q
+        if (
+            self.algorithm.config.learning_rate > 0
+        ):  # If learning rate is 0, use the average reward of the arm.
+            q = old_q + error * self.algorithm.config.learning_rate
         else:
-            q = old_q + (reward - old_q) / count
+            q = old_q + error / count
         self.rewards_states.q_values[arm_index, 0] = q

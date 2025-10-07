@@ -93,9 +93,7 @@ class BaseAgent(ABC, Generic[AgentReward_T, AgentAlgorithm_T]):
     def update(self, arm_index: int, reward: int) -> None:
         self.steps += 1
         # update rewards
-        self.rewards_states.rewards[arm_index, 0] += 1
-        self.rewards_states.rewards[arm_index, 1] += reward
-        self.rewards_states.sliding_window_rewards.append((1, reward))
+        self._update_rewards_states(arm_index, reward)
 
         # update metrics
         if arm_index == self.env.best_arm_index:
@@ -175,3 +173,8 @@ class BaseAgent(ABC, Generic[AgentReward_T, AgentAlgorithm_T]):
             [pull_count for pull_count, _ in self.rewards_states.sliding_window_rewards]
         )
         return rewards / pull_counts
+
+    def _update_rewards_states(self, arm_index: int, reward: int) -> None:
+        self.rewards_states.rewards[arm_index, 0] += 1
+        self.rewards_states.rewards[arm_index, 1] += reward
+        self.rewards_states.sliding_window_rewards.append((1, reward))

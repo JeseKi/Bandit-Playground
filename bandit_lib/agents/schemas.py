@@ -45,19 +45,24 @@ class GreedyRewardStates(BaseRewardStates):
         )
 
 
-class UCB1RewardStates(GreedyRewardStates):
-    ucb1_values: np.ndarray = Field(
+class UCBRewardStates(GreedyRewardStates):
+    ucb_values: np.ndarray = Field(
         ...,
-        description="Q values with upper confidence bound, shape: (num_arms, 1) where stats[i, 0] = arm i's UCB1 value.",
+        description="Q values with upper confidence bound, shape: (num_arms, 1) where stats[i, 0] = arm i's UCB value.",
+    )
+    discounted_count: np.ndarray = Field(
+        ...,
+        description="Discounted count of the arms, shape: (num_arms, 1) where stats[i, 0] = arm i's discounted count.",
     )
 
     @classmethod
-    def create(cls, arm_num: int, sliding_window_size: int) -> "UCB1RewardStates":
+    def create(cls, arm_num: int, sliding_window_size: int) -> "UCBRewardStates":
         return cls(
             rewards=np.zeros((arm_num, 2)),
             sliding_window_rewards=deque(maxlen=sliding_window_size),
             q_values=np.zeros((arm_num, 1)),
-            ucb1_values=np.zeros((arm_num, 1)),
+            ucb_values=np.zeros((arm_num, 1)),
+            discounted_count=np.zeros((arm_num, 2)),
         )
 
 
@@ -85,13 +90,12 @@ class ThompsonSamplingRewardStates(BaseRewardStates):
 
 class AlgorithmType(Enum):
     GREEDY = "greedy"
-    UCB1 = "ucb1"
+    UCB = "ucb"
     THOMPSON_SAMPLING = "thompson_sampling"
 
 
 class AlgorithmConfig(BaseModel):
     algorithm_type: AlgorithmType
-    enable_decay_alpha: bool = Field(default=False)
 
 
 class GreedyConfig(AlgorithmConfig):
@@ -102,17 +106,33 @@ class GreedyConfig(AlgorithmConfig):
     enable_epsilon_decay: bool = Field(default=False)
     epsilon_decay_factor: float = Field(default=0.99)
     epsilon_min_value: float = Field(default=0.01)
-    constant_step_decay_alpha: float = Field(default=0.1)
+    learning_rate: float = Field(
+        default=0.1,
+        ge=0,
+        le=1,
+        description="Learning rate of the algorithm. If 0, use the average reward of the arm.",
+    )
 
 
-class UCB1Config(AlgorithmConfig):
-    algorithm_type: AlgorithmType = AlgorithmType.UCB1
-    constant_step_decay_alpha: float = Field(default=0.1)
+class UCBConfig(AlgorithmConfig):
+    algorithm_type: AlgorithmType = AlgorithmType.UCB
+    forgetting_factor: float = Field(
+        default=0.9,
+        ge=0,
+        le=1,
+        description="The forgetting factor of the algorithm determines its behavior: when set to 1, it corresponds to the UCB1 algorithm; otherwise, it implements the D-UCB variant.",
+    )
+    exploration_coefficient: float = Field(default=2, ge=0)
 
 
 class ThompsonSamplingConfig(AlgorithmConfig):
     algorithm_type: AlgorithmType = AlgorithmType.THOMPSON_SAMPLING
-    discount_factor: float = Field(default=0.9)
+    forgetting_factor: float = Field(
+        default=0.9,
+        ge=0,
+        le=1,
+        description="The forgetting factor of the algorithm determines its behavior: when set to 1, it corresponds to the Thompson Sampling algorithm; otherwise, it implements the D-Thompson Sampling variant.",
+    )
 
 
 class Metrics(BaseModel):

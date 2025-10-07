@@ -10,10 +10,10 @@ from bandit_lib.agents import (
     AlgorithmType,
     AlgorithmConfig,
     GreedyAlgorithm,
-    UCB1Algorithm,
+    UCBAlgorithm,
     ThompsonSamplingAlgorithm,
     GreedyConfig,
-    UCB1Config,
+    UCBConfig,
     ThompsonSamplingConfig,
     MetricsConfig,
 )
@@ -45,9 +45,9 @@ def algorithm_factory(
     if algorithm_config.algorithm_type == AlgorithmType.GREEDY:
         algorithm_config = cast(GreedyConfig, algorithm_config)
         return GreedyAlgorithm(config=algorithm_config)
-    elif algorithm_config.algorithm_type == AlgorithmType.UCB1:
-        algorithm_config = cast(UCB1Config, algorithm_config)
-        return UCB1Algorithm(config=algorithm_config)
+    elif algorithm_config.algorithm_type == AlgorithmType.UCB:
+        algorithm_config = cast(UCBConfig, algorithm_config)
+        return UCBAlgorithm(config=algorithm_config)
     elif algorithm_config.algorithm_type == AlgorithmType.THOMPSON_SAMPLING:
         algorithm_config = cast(ThompsonSamplingConfig, algorithm_config)
         return ThompsonSamplingAlgorithm(config=algorithm_config)

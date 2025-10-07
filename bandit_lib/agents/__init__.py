@@ -7,13 +7,13 @@ from .schemas import (
     MetricsConfig,
     GreedyConfig,
     GreedyRewardStates,
-    UCB1Config,
-    UCB1RewardStates,
+    UCBConfig,
+    UCBRewardStates,
     ThompsonSamplingConfig,
     ThompsonSamplingRewardStates,
 )
 from .greedy_agent import GreedyAgent, GreedyAlgorithm
-from .ucb1_agent import UCB1Agent, UCB1Algorithm
+from .ucb_agent import UCBAgent, UCBAlgorithm
 from .ts_agent import ThompsonSamplingAgent, ThompsonSamplingAlgorithm
 
 __all__ = [
@@ -26,14 +26,14 @@ __all__ = [
     "MetricsConfig",
     "GreedyConfig",
     "GreedyRewardStates",
-    "UCB1Config",
-    "UCB1RewardStates",
+    "UCBConfig",
+    "UCBRewardStates",
     "ThompsonSamplingConfig",
     "ThompsonSamplingRewardStates",
     "GreedyAgent",
     "GreedyAlgorithm",
-    "UCB1Agent",
-    "UCB1Algorithm",
+    "UCBAgent",
+    "UCBAlgorithm",
     "ThompsonSamplingAgent",
     "ThompsonSamplingAlgorithm",
 ]
