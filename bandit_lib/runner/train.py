@@ -1,4 +1,4 @@
-from typing import List, Tuple, Type, cast
+from typing import List, Tuple, Type, cast, Deque
 from multiprocessing import Pool
 import numpy as np
 from tqdm import tqdm
@@ -121,6 +121,8 @@ def calculate_metrics(
         sliding_window_size=results[0][0].metrics_config.sliding_window_size,
     )
     rewards_states.rewards = np.mean([reward.rewards for reward in rewards], axis=0)
+    sliding_window_rewards = cast(Deque[Tuple[float, float]], [reward.sliding_window_rewards for reward in rewards])
+    rewards_states.sliding_window_rewards = np.mean(sliding_window_rewards, axis=0)
     metrics_list: List[List[Metrics]] = [result[2] for result in results]
 
     metrics_history_avg: List[Metrics] = []

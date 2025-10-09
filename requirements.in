@@ -9,3 +9,4 @@ pydantic
 nbformat
 kaleido
 tqdm
+types-tqdm

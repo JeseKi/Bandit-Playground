@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, TypeVar, Generic, Type
+from typing import List, TypeVar, Generic, Type, Deque
 from abc import ABC, abstractmethod
 import random
 
@@ -177,4 +177,5 @@ class BaseAgent(ABC, Generic[AgentReward_T, AgentAlgorithm_T]):
     def _update_rewards_states(self, arm_index: int, reward: int) -> None:
         self.rewards_states.rewards[arm_index, 0] += 1
         self.rewards_states.rewards[arm_index, 1] += reward
-        self.rewards_states.sliding_window_rewards.append((1, reward))
+        if isinstance(self.rewards_states.sliding_window_rewards, Deque):
+            self.rewards_states.sliding_window_rewards.append((1, reward))

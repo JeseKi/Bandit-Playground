@@ -17,7 +17,7 @@ class BaseRewardStates(BaseModel):
         ...,
         description="Rewards of the agent, shape: (num_arms, 2) where stats[i, 0] = arm i's pull count and stats[i, 1] = arm i's reward value.",
     )
-    sliding_window_rewards: Deque[Tuple[float, float]] = Field(
+    sliding_window_rewards: Deque[Tuple[float, float]] | np.ndarray = Field(
         ...,
         description="Rewards of the agent in a sliding window. Tuple of (pull count, reward value).",
     )
