@@ -102,6 +102,10 @@ traitlets==5.14.3
     #   nbformat
 ty==0.0.1a21
     # via -r requirements.in
+types-requests==2.32.4.20250913
+    # via types-tqdm
+types-tqdm==4.67.0.20250809
+    # via -r requirements.in
 typing-extensions==4.15.0
     # via
     #   exceptiongroup
@@ -112,6 +116,8 @@ typing-extensions==4.15.0
     #   typing-inspection
 typing-inspection==0.4.1
     # via pydantic
+urllib3==2.5.0
+    # via types-requests
 uv==0.8.22
     # via -r requirements.in
 wheel==0.45.1
