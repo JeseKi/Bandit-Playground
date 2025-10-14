@@ -57,6 +57,92 @@ def _determine_layout(metric_count: int) -> Tuple[int, int]:
     return rows, cols
 
 
+def _find_intersections(
+    x1: List[float], y1: List[float], x2: List[float], y2: List[float]
+) -> List[Tuple[float, float]]:
+    """Find intersection points between two curves using linear interpolation
+
+    Args:
+        x1, y1: Data points for the first curve
+        x2, y2: Data points for the second curve
+
+    Returns:
+        List of (x, y) intersection points
+    """
+    intersections: List[Tuple[float, float]] = []
+
+    if len(x1) < 2 or len(x2) < 2:
+        return intersections
+
+    # For each segment in curve 1, check for intersections with curve 2
+    for i in range(len(x1) - 1):
+        x1_start, x1_end = x1[i], x1[i + 1]
+        y1_start, y1_end = y1[i], y1[i + 1]
+
+        for j in range(len(x2) - 1):
+            x2_start, x2_end = x2[j], x2[j + 1]
+            y2_start, y2_end = y2[j], y2[j + 1]
+
+            x_overlap_start = max(x1_start, x2_start)
+            x_overlap_end = min(x1_end, x2_end)
+
+            if x_overlap_start >= x_overlap_end:
+                continue
+
+            # Linear interpolation for curve 1 in overlap region
+            t1 = (
+                (x_overlap_start - x1_start) / (x1_end - x1_start)
+                if x1_end != x1_start
+                else 0
+            )
+            t2 = (
+                (x_overlap_end - x1_start) / (x1_end - x1_start)
+                if x1_end != x1_start
+                else 1
+            )
+
+            y1_overlap_start = y1_start + t1 * (y1_end - y1_start)
+            y1_overlap_end = y1_start + t2 * (y1_end - y1_start)
+
+            # Linear interpolation for curve 2 in overlap region
+            t3 = (
+                (x_overlap_start - x2_start) / (x2_end - x2_start)
+                if x2_end != x2_start
+                else 0
+            )
+            t4 = (
+                (x_overlap_end - x2_start) / (x2_end - x2_start)
+                if x2_end != x2_start
+                else 1
+            )
+
+            y2_overlap_start = y2_start + t3 * (y2_end - y2_start)
+            y2_overlap_end = y2_start + t4 * (y2_end - y2_start)
+
+            # Check for sign changes (crossings) in the overlap region
+            if (y1_overlap_start - y2_overlap_start) * (
+                y1_overlap_end - y2_overlap_end
+            ) < 0:
+                # Calculate intersection point using linear interpolation
+                # Find the exact x where y1(x) = y2(x)
+                denom = (y1_overlap_end - y2_overlap_end) - (
+                    y1_overlap_start - y2_overlap_start
+                )
+                if abs(denom) > 1e-10:  # Avoid division by zero
+                    t = (y2_overlap_start - y1_overlap_start) / denom
+                    x_intersect = x_overlap_start + t * (
+                        x_overlap_end - x_overlap_start
+                    )
+
+                    # Interpolate y value
+                    y_intersect = y1_overlap_start + t * (
+                        y1_overlap_end - y1_overlap_start
+                    )
+                    intersections.append((x_intersect, y_intersect))
+
+    return intersections
+
+
 def plot_metrics_history(
     metrics_history: Sequence["Metrics"],
     agent_name: str,
@@ -170,7 +256,7 @@ def plot_metrics_history(
     return fig
 
 
-def _get_color_from_name(name: str) -> str:
+def get_color_from_name(name: str) -> str:
     """Generate a stable hex color from a string name using hash
 
     Args:
@@ -186,92 +272,6 @@ def _get_color_from_name(name: str) -> str:
     # Take first 6 characters of hash and add # prefix
     color_hex = hash_hex[:6]
     return f"#{color_hex}"
-
-
-def _find_intersections(
-    x1: List[float], y1: List[float], x2: List[float], y2: List[float]
-) -> List[Tuple[float, float]]:
-    """Find intersection points between two curves using linear interpolation
-
-    Args:
-        x1, y1: Data points for the first curve
-        x2, y2: Data points for the second curve
-
-    Returns:
-        List of (x, y) intersection points
-    """
-    intersections: List[Tuple[float, float]] = []
-
-    if len(x1) < 2 or len(x2) < 2:
-        return intersections
-
-    # For each segment in curve 1, check for intersections with curve 2
-    for i in range(len(x1) - 1):
-        x1_start, x1_end = x1[i], x1[i + 1]
-        y1_start, y1_end = y1[i], y1[i + 1]
-
-        for j in range(len(x2) - 1):
-            x2_start, x2_end = x2[j], x2[j + 1]
-            y2_start, y2_end = y2[j], y2[j + 1]
-
-            x_overlap_start = max(x1_start, x2_start)
-            x_overlap_end = min(x1_end, x2_end)
-
-            if x_overlap_start >= x_overlap_end:
-                continue
-
-            # Linear interpolation for curve 1 in overlap region
-            t1 = (
-                (x_overlap_start - x1_start) / (x1_end - x1_start)
-                if x1_end != x1_start
-                else 0
-            )
-            t2 = (
-                (x_overlap_end - x1_start) / (x1_end - x1_start)
-                if x1_end != x1_start
-                else 1
-            )
-
-            y1_overlap_start = y1_start + t1 * (y1_end - y1_start)
-            y1_overlap_end = y1_start + t2 * (y1_end - y1_start)
-
-            # Linear interpolation for curve 2 in overlap region
-            t3 = (
-                (x_overlap_start - x2_start) / (x2_end - x2_start)
-                if x2_end != x2_start
-                else 0
-            )
-            t4 = (
-                (x_overlap_end - x2_start) / (x2_end - x2_start)
-                if x2_end != x2_start
-                else 1
-            )
-
-            y2_overlap_start = y2_start + t3 * (y2_end - y2_start)
-            y2_overlap_end = y2_start + t4 * (y2_end - y2_start)
-
-            # Check for sign changes (crossings) in the overlap region
-            if (y1_overlap_start - y2_overlap_start) * (
-                y1_overlap_end - y2_overlap_end
-            ) < 0:
-                # Calculate intersection point using linear interpolation
-                # Find the exact x where y1(x) = y2(x)
-                denom = (y1_overlap_end - y2_overlap_end) - (
-                    y1_overlap_start - y2_overlap_start
-                )
-                if abs(denom) > 1e-10:  # Avoid division by zero
-                    t = (y2_overlap_start - y1_overlap_start) / denom
-                    x_intersect = x_overlap_start + t * (
-                        x_overlap_end - x_overlap_start
-                    )
-
-                    # Interpolate y value
-                    y_intersect = y1_overlap_start + t * (
-                        y1_overlap_end - y1_overlap_start
-                    )
-                    intersections.append((x_intersect, y_intersect))
-
-    return intersections
 
 
 def plot_comparison(
@@ -333,7 +333,7 @@ def plot_comparison(
                 else f"run_{run_idx + 1}"
             )
         run_labels.append(label)
-        run_colors.append(_get_color_from_name(label))
+        run_colors.append(get_color_from_name(label))
 
     # plot each metric
     for idx, metric_key in enumerate(metrics_to_plot):
@@ -383,7 +383,7 @@ def plot_comparison(
             all_x_series.append(list(map(float, aligned_steps)))
             all_y_series.append(list(map(float, avg_values)))
 
-            color = _get_color_from_name(label)
+            color = get_color_from_name(label)
             fig.add_trace(
                 go.Scatter(
                     x=aligned_steps,

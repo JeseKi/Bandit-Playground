@@ -1,6 +1,6 @@
 [project]
 name = "bandit-lib"
-version = "0.1.0"
+version = "0.1.1"
 description = "A beginner-friendly playground for multi-armed bandit algorithms with visualization."
 authors = [
     {name = "Jese Ki",email = "2094901072@qq.com"}
@@ -20,7 +20,8 @@ dependencies = [
     "nbformat (>=5.10.4,<6.0.0)",
     "kaleido (>=1.1.0,<2.0.0)",
     "tqdm (>=4.67.1,<5.0.0)",
-    "types-tqdm (>=4.67.0.20250809,<5.0.0.0)"
+    "types-tqdm (>=4.67.0.20250809,<5.0.0.0)",
+    "pandas (>=2.3.3,<3.0.0)"
 ]
 packages = [
     { include = "bandit_lib" }
