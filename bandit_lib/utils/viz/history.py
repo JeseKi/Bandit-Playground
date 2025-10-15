@@ -1,12 +1,20 @@
 from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Sequence, TYPE_CHECKING
+import math
 
 from plotly.subplots import make_subplots  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 
 from bandit_lib.utils.viz.constants import _METRIC_LABELS
-from bandit_lib.utils.viz.utils import determine_layout, compute_convergence_rate_series
+from bandit_lib.utils.viz.utils import (
+    determine_layout,
+    compute_convergence_rate_series,
+    compute_mean_and_ci,
+    hex_to_rgba,
+    get_color_from_name,
+    _z_value_for_confidence,
+)
 
 
 if TYPE_CHECKING:
@@ -24,6 +32,8 @@ def plot_metrics_history(
     width: int = 1500,
     height: int = 1500,
     scale: int = 2,
+    enable_statistical_credibility: bool = False,
+    credibility_confidence: float = 0.95,
 ) -> go.Figure:
     """Plot the metrics history with plotly
 
@@ -73,6 +83,102 @@ def plot_metrics_history(
             row=row,
             col=col,
         )
+
+        if enable_statistical_credibility:
+            color = get_color_from_name(metric_key)
+            if metric_key == "convergence_rate":
+                # based on the binomial distribution approximation, compute the confidence interval for the proportion: p ± z * sqrt(p(1-p)/n)
+                n = len(agents) if agents else 0
+                if n > 0:
+                    z = _z_value_for_confidence(credibility_confidence)
+                    ci_lower: List[float] = []
+                    ci_upper: List[float] = []
+                    for p in raw_values:
+                        se = math.sqrt(max(0.0, p * (1.0 - p)) / n)
+                        margin = z * se
+                        ci_lower.append(max(0.0, p - margin))
+                        ci_upper.append(min(1.0, p + margin))
+
+                    # draw confidence band (lower bound to upper bound fill)
+                    fig.add_trace(
+                        go.Scatter(
+                            x=steps,
+                            y=ci_lower,
+                            mode="lines",
+                            line=dict(color=color, width=0),
+                            name=f"{metric_key} CI lower",
+                            hoverinfo="skip",
+                            showlegend=False,
+                        ),
+                        row=row,
+                        col=col,
+                    )
+                    fig.add_trace(
+                        go.Scatter(
+                            x=steps,
+                            y=ci_upper,
+                            mode="lines",
+                            line=dict(color=color, width=0),
+                            fill="tonexty",
+                            fillcolor=hex_to_rgba(color, 0.18),
+                            name=f"{metric_key} {int(credibility_confidence * 100)}% CI",
+                            hoverinfo="skip",
+                            showlegend=False,
+                        ),
+                        row=row,
+                        col=col,
+                    )
+            else:
+                # aggregate the time series of each replication experiment from agents
+                if agents:
+                    series_list: List[List[float]] = []
+                    min_len = None
+                    for ag in agents:
+                        seq = [
+                            getattr(m, metric_key) for m in getattr(ag, "metrics", [])
+                        ]
+                        if not seq:
+                            continue
+                        if min_len is None:
+                            min_len = len(seq)
+                        else:
+                            min_len = min(min_len, len(seq))
+                        series_list.append([float(v) for v in seq])
+
+                    if series_list and len(series_list) >= 2:
+                        mean_v, lower_v, upper_v = compute_mean_and_ci(
+                            [s[:min_len] for s in series_list],
+                            confidence=credibility_confidence,
+                        )
+                        x_steps = steps[: len(mean_v)]
+                        fig.add_trace(
+                            go.Scatter(
+                                x=x_steps,
+                                y=lower_v,
+                                mode="lines",
+                                line=dict(color=color, width=0),
+                                name=f"{metric_key} CI lower",
+                                hoverinfo="skip",
+                                showlegend=False,
+                            ),
+                            row=row,
+                            col=col,
+                        )
+                        fig.add_trace(
+                            go.Scatter(
+                                x=x_steps,
+                                y=upper_v,
+                                mode="lines",
+                                line=dict(color=color, width=0),
+                                fill="tonexty",
+                                fillcolor=hex_to_rgba(color, 0.18),
+                                name=f"{metric_key} {int(credibility_confidence * 100)}% CI",
+                                hoverinfo="skip",
+                                showlegend=False,
+                            ),
+                            row=row,
+                            col=col,
+                        )
 
         final_value = next(
             (value for value in reversed(raw_values) if value is not None), None
