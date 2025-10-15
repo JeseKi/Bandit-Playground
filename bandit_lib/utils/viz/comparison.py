@@ -13,13 +13,392 @@ from bandit_lib.utils.viz.utils import (
     get_color_from_name,
     compute_mean_and_ci,
     hex_to_rgba,
-    _z_value_for_confidence,
+    z_value_for_confidence,
 )
 from bandit_lib.utils.viz.history import compute_convergence_rate_series
 
 
 if TYPE_CHECKING:
     from bandit_lib.agents.base import Agent_T
+
+
+def _validate_inputs_for_comparison(
+    runs_data: List[Tuple[ProcessDataDump, List["Agent_T"]]],
+    metrics_to_plot: List[str],
+) -> List[str]:
+    """Validate inputs and normalize metrics list.
+
+    Returns a non-empty list of metrics to plot.
+    """
+    if not runs_data:
+        raise ValueError("runs_data cannot be empty")
+    if not metrics_to_plot:
+        return _METRIC_LABELS.copy()
+    return metrics_to_plot
+
+
+def _create_subplots(metrics_to_plot: List[str]) -> Tuple[go.Figure, int, int]:
+    """Create subplot figure and return figure with (rows, cols)."""
+    rows, cols = determine_layout(len(metrics_to_plot))
+    fig = make_subplots(
+        rows=rows,
+        cols=cols,
+        subplot_titles=metrics_to_plot,
+        horizontal_spacing=0.08,
+        vertical_spacing=0.12,
+    )
+    return fig, rows, cols
+
+
+def _build_run_labels_and_colors(
+    runs_data: List[Tuple[ProcessDataDump, List["Agent_T"]]],
+) -> List[str]:
+    """Build per-run labels and stable colors from agent name or run_id."""
+    run_labels: List[str] = []
+    for run_idx, (process_dump, _agents) in enumerate(runs_data):
+        if _agents and getattr(_agents[0], "name", None):
+            label = str(_agents[0].name)
+        else:
+            label = (
+                process_dump.run_id
+                if getattr(process_dump, "run_id", None)
+                else f"run_{run_idx + 1}"
+            )
+        run_labels.append(label)
+    return run_labels
+
+
+def _extract_history_for_run(process_dump: ProcessDataDump) -> List[Any]:
+    """Extract a representative metrics history sequence from a process dump."""
+    history = process_dump.metrics_history_avg
+    if not history:
+        if process_dump.metrics_history and len(process_dump.metrics_history[0]) > 0:
+            history = process_dump.metrics_history[0]
+        else:
+            return []
+    return history
+
+
+def _collect_metric_series_for_runs(
+    runs_data: List[Tuple[ProcessDataDump, List["Agent_T"]]],
+    run_labels: List[str],
+    metric_key: str,
+    enable_statistical_credibility: bool,
+) -> Tuple[
+    Dict[str, List[Tuple[List[float], List[float]]]],
+    Dict[str, List[List[float]]],
+    Dict[str, List[float]],
+    Dict[str, int],
+]:
+    """Collect time series per label and optional replication series for CI."""
+    label_to_series: Dict[str, List[Tuple[List[float], List[float]]]] = {}
+    label_to_rep_series: Dict[str, List[List[float]]] = {}
+    label_to_rep_steps: Dict[str, List[float]] = {}
+    label_to_agents_count: Dict[str, int] = {}
+
+    for run_idx, (process_dump, agents) in enumerate(runs_data):
+        history = _extract_history_for_run(process_dump)
+        if not history:
+            continue
+
+        steps = [float(m.current_step) for m in history]
+        if metric_key == "convergence_rate":
+            if not agents:
+                continue
+            y_values = compute_convergence_rate_series(steps, agents)  # type: ignore[arg-type]
+            label_to_agents_count[run_labels[run_idx]] = len(agents)
+        else:
+            y_values = [float(getattr(m, metric_key)) for m in history]
+
+        label = run_labels[run_idx]
+        label_to_series.setdefault(label, []).append((steps, y_values))
+
+        # metrics_history: List[List[Metrics]], each agent has a complete history
+        if enable_statistical_credibility and getattr(
+            process_dump, "metrics_history", None
+        ):
+            rep_series: List[List[float]] = []
+            min_len_rep = None
+            for seq in process_dump.metrics_history:
+                vals = [float(getattr(m, metric_key)) for m in seq]
+                if not vals:
+                    continue
+                if min_len_rep is None:
+                    min_len_rep = len(vals)
+                else:
+                    min_len_rep = min(min_len_rep, len(vals))
+                rep_series.append(vals)
+            if rep_series and min_len_rep:
+                # Align to the same length across replications
+                rep_series = [arr[:min_len_rep] for arr in rep_series]
+                label_to_rep_series.setdefault(label, []).extend(rep_series)
+                label_to_rep_steps[label] = steps[:min_len_rep]
+
+    return (
+        label_to_series,
+        label_to_rep_series,
+        label_to_rep_steps,
+        label_to_agents_count,
+    )
+
+
+def _align_and_average_series(
+    series_list: List[Tuple[List[float], List[float]]],
+) -> Tuple[List[float], List[float]]:
+    """Align series by step index and compute the mean value across series."""
+    if not series_list:
+        return [], []
+    base_steps = series_list[0][0]
+    min_len = min(len(s[0]) for s in series_list)
+    aligned_steps = base_steps[:min_len]
+    avg_values: List[float] = []
+    for idx_step in range(min_len):
+        vals = [s[1][idx_step] for s in series_list if len(s[1]) > idx_step]
+        if not vals:
+            avg_values.append(float("nan"))
+        else:
+            avg_values.append(float(sum(vals) / len(vals)))
+    return list(map(float, aligned_steps)), list(map(float, avg_values))
+
+
+def _add_series_trace(
+    fig: go.Figure,
+    row: int,
+    col: int,
+    label: str,
+    aligned_steps: List[float],
+    avg_values: List[float],
+    metric_block_index: int,
+) -> None:
+    """Add a line+markers trace for the averaged series of a label."""
+    color = get_color_from_name(label)
+    fig.add_trace(
+        go.Scatter(
+            x=aligned_steps,
+            y=avg_values,
+            mode="lines+markers",
+            name=label,
+            line=dict(color=color, width=2),
+            marker=dict(size=5, color=color),
+            legendgroup=label,
+            showlegend=(metric_block_index == 0),
+        ),
+        row=row,
+        col=col,
+    )
+
+
+def _add_ci_band_for_label(
+    fig: go.Figure,
+    row: int,
+    col: int,
+    label: str,
+    metric_key: str,
+    aligned_steps: List[float],
+    avg_values: List[float],
+    label_to_rep_series: Dict[str, List[List[float]]],
+    label_to_rep_steps: Dict[str, List[float]],
+    label_to_agents_count: Dict[str, int],
+    credibility_confidence: float,
+) -> None:
+    """Draw statistical credibility band for a label when enabled."""
+    color = get_color_from_name(label)
+    if metric_key == "convergence_rate":
+        n_agents = label_to_agents_count.get(label, 0)
+        if n_agents <= 0:
+            return
+        z = z_value_for_confidence(credibility_confidence)
+        # Binomial approximation: p ± z * sqrt(p(1-p)/n)
+        ci_lower: List[float] = []
+        ci_upper: List[float] = []
+        for p in avg_values:
+            se = math.sqrt(max(0.0, p * (1.0 - p)) / n_agents)
+            margin = z * se
+            ci_lower.append(max(0.0, p - margin))
+            ci_upper.append(min(1.0, p + margin))
+        fig.add_trace(
+            go.Scatter(
+                x=aligned_steps,
+                y=ci_lower,
+                mode="lines",
+                line=dict(color=color, width=0),
+                name=f"{label} CI lower",
+                hoverinfo="skip",
+                legendgroup=label,
+                showlegend=False,
+            ),
+            row=row,
+            col=col,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=aligned_steps,
+                y=ci_upper,
+                mode="lines",
+                line=dict(color=color, width=0),
+                fill="tonexty",
+                fillcolor=hex_to_rgba(color, 0.18),
+                name=f"{label} {int(credibility_confidence * 100)}% CI",
+                hoverinfo="skip",
+                legendgroup=label,
+                showlegend=False,
+            ),
+            row=row,
+            col=col,
+        )
+    else:
+        series_for_ci = label_to_rep_series.get(label)
+        x_for_ci = label_to_rep_steps.get(label)
+        if series_for_ci and x_for_ci and len(series_for_ci) >= 2:
+            mean_v, lower_v, upper_v = compute_mean_and_ci(
+                series_for_ci, confidence=credibility_confidence
+            )
+            x_ci = x_for_ci[: len(mean_v)]
+            fig.add_trace(
+                go.Scatter(
+                    x=x_ci,
+                    y=lower_v,
+                    mode="lines",
+                    line=dict(color=color, width=0),
+                    name=f"{label} CI lower",
+                    hoverinfo="skip",
+                    legendgroup=label,
+                    showlegend=False,
+                ),
+                row=row,
+                col=col,
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=x_ci,
+                    y=upper_v,
+                    mode="lines",
+                    line=dict(color=color, width=0),
+                    fill="tonexty",
+                    fillcolor=hex_to_rgba(color, 0.18),
+                    name=f"{label} {int(credibility_confidence * 100)}% CI",
+                    hoverinfo="skip",
+                    legendgroup=label,
+                    showlegend=False,
+                ),
+                row=row,
+                col=col,
+            )
+
+
+def _add_intersections(
+    fig: go.Figure,
+    row: int,
+    col: int,
+    all_x_series: List[List[float]],
+    all_y_series: List[List[float]],
+    metric_key: str,
+    intersection_marker_size: int,
+    intersection_marker_color: str,
+) -> None:
+    """Compute pairwise intersections and add marker traces if any."""
+    if len(all_x_series) < 2:
+        return
+    curve_count = len(all_x_series)
+    for i in range(curve_count - 1):
+        for j in range(i + 1, curve_count):
+            intersections = _find_intersections(
+                all_x_series[i],
+                all_y_series[i],
+                all_x_series[j],
+                all_y_series[j],
+            )
+            if not intersections:
+                continue
+            xs = [pt[0] for pt in intersections]
+            ys = [pt[1] for pt in intersections]
+            fig.add_trace(
+                go.Scatter(
+                    x=xs,
+                    y=ys,
+                    mode="markers",
+                    name=f"Intersection: {i + 1} vs {j + 1} ({metric_key})",
+                    marker=dict(
+                        size=intersection_marker_size,
+                        color=intersection_marker_color,
+                        symbol="x",
+                    ),
+                    showlegend=False,
+                ),
+                row=row,
+                col=col,
+            )
+
+
+def _configure_axes(
+    fig: go.Figure, row: int, col: int, x_log: bool, metric_key: str
+) -> None:
+    """Configure axes titles and optional logarithmic scale."""
+    xaxis_kwargs: Dict[str, Any] = {"title": "Steps"}
+    if x_log:
+        xaxis_kwargs["type"] = "log"
+    fig.update_xaxes(row=row, col=col, **xaxis_kwargs)
+    fig.update_yaxes(row=row, col=col, title=metric_key)
+
+
+def _compute_final_dimensions(
+    height: int, width: int, rows: int, cols: int
+) -> Tuple[int, int]:
+    """Compute final figure dimensions with fallbacks."""
+    final_height = height if height and height > 0 else max(400, rows * 500)
+    final_width = width if width and width > 0 else max(600, cols * 500)
+    return final_height, final_width
+
+
+def _apply_layout(fig: go.Figure, final_height: int, final_width: int) -> None:
+    """Apply common layout settings to the figure."""
+    fig.update_layout(
+        title="Comparison across runs",
+        height=final_height,
+        width=final_width,
+        showlegend=True,
+        template="plotly_white",
+        legend=dict(
+            orientation="v",
+            yanchor="top",
+            y=1,
+            xanchor="left",
+            x=1.02,
+            tracegroupgap=8,
+        ),
+        margin=dict(l=60, r=120, t=60, b=50),
+    )
+
+
+def _export_figure(
+    fig: go.Figure,
+    file_name: Path,
+    final_width: int,
+    final_height: int,
+    scale: int,
+) -> Path:
+    """Export figure to HTML or image, with HTML fallback when engine missing."""
+    output_path = Path(file_name)
+    if output_path.suffix == "":
+        output_path = output_path.with_suffix(".html")
+
+    if not output_path.parent.exists():
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    suffix = output_path.suffix.lower()
+    try:
+        if suffix in {".html", ".htm"}:
+            fig.write_html(str(output_path))
+        else:
+            fig.write_image(
+                str(output_path), width=final_width, height=final_height, scale=scale
+            )
+    except ValueError:
+        print("Error writing image, falling back to HTML")
+        fallback_path = output_path.with_suffix(".html")
+        fig.write_html(str(fallback_path))
+        output_path = fallback_path
+    return output_path
 
 
 def _find_intersections(
@@ -122,301 +501,99 @@ def plot_comparison(
     enable_statistical_credibility: bool = False,
     credibility_confidence: float = 0.95,
 ) -> go.Figure:
-    """Plot comparison of multiple experiment runs with intersection points marked
+    """Plot comparison of multiple experiment runs with optional intersections.
 
     Args:
-        runs_data: List of tuples containing (ProcessDataDump, List[Agent_T])
-                  for each experiment run to compare
-        file_name: The name of the file to save the plot
-        x_log: Whether to use a logarithmic x-axis
-        metrics_to_plot: The metrics to plot
-        width: The width of the image
-        height: The height of the image
-        scale: The scale of the image
-        show_intersections: Whether to show intersection points between curves
-        intersection_marker_size: Size of intersection markers
-        intersection_marker_color: Color of intersection markers
+        runs_data: List of (process_dump, agents) tuples, process_dump is the process data dump of the run, agents is used for statistical credibility and convergence rate.
+        file_name: Path to save the figure
+        x_log: Whether to use logarithmic scale for the x-axis
+        metrics_to_plot: List of metrics to plot
+        width: Width of the figure
+        height: Height of the figure
+        scale: Scale of the figure
+        show_intersections: Whether to show intersections
+        intersection_marker_size: Size of the intersection marker
+        intersection_marker_color: Color of the intersection marker
+        enable_statistical_credibility: Whether to enable statistical credibility
+        credibility_confidence: Confidence level for the statistical credibility
 
     Returns:
-        The plotly figure object
+        Plotly figure
     """
-    if not runs_data:
-        raise ValueError("runs_data cannot be empty")
-    if not metrics_to_plot:
-        metrics_to_plot = _METRIC_LABELS.copy()
+    metrics_to_plot = _validate_inputs_for_comparison(runs_data, metrics_to_plot)
+    fig, rows, cols = _create_subplots(metrics_to_plot)
 
-    # layout
-    rows, cols = determine_layout(len(metrics_to_plot))
-    fig = make_subplots(
-        rows=rows,
-        cols=cols,
-        subplot_titles=metrics_to_plot,
-        horizontal_spacing=0.08,
-        vertical_spacing=0.12,
-    )
-
-    # pre-process
-    run_labels: List[str] = []
-    run_colors: List[str] = []
-    for run_idx, (process_dump, _agents) in enumerate(runs_data):
-        if _agents and getattr(_agents[0], "name", None):
-            label = str(_agents[0].name)
-        else:
-            # fallback to run_id
-            label = (
-                process_dump.run_id
-                if getattr(process_dump, "run_id", None)
-                else f"run_{run_idx + 1}"
-            )
-        run_labels.append(label)
-        run_colors.append(get_color_from_name(label))
+    run_labels = _build_run_labels_and_colors(runs_data)
 
     # plot each metric
-    for idx, metric_key in enumerate(metrics_to_plot):
-        row = idx // cols + 1
-        col = idx % cols + 1
+    for metric_block_index, metric_key in enumerate(metrics_to_plot):
+        row = metric_block_index // cols + 1
+        col = metric_block_index % cols + 1
 
         all_x_series: List[List[float]] = []
         all_y_series: List[List[float]] = []
 
-        label_to_series: Dict[str, List[Tuple[List[float], List[float]]]] = {}
-        label_to_rep_series: Dict[str, List[List[float]]] = {}
-        label_to_rep_steps: Dict[str, List[float]] = {}
-        label_to_agents_count: Dict[str, int] = {}
+        (
+            label_to_series,
+            label_to_rep_series,
+            label_to_rep_steps,
+            label_to_agents_count,
+        ) = _collect_metric_series_for_runs(
+            runs_data,
+            run_labels,
+            metric_key,
+            enable_statistical_credibility,
+        )
 
-        for run_idx, (process_dump, agents) in enumerate(runs_data):
-            history = process_dump.metrics_history_avg
-            if not history:
-                if (
-                    process_dump.metrics_history
-                    and len(process_dump.metrics_history[0]) > 0
-                ):
-                    history = process_dump.metrics_history[0]
-                else:
-                    continue
-
-            steps = [float(m.current_step) for m in history]
-            if metric_key == "convergence_rate":
-                if not agents:
-                    continue
-                y_values = compute_convergence_rate_series(steps, agents)  # type: ignore[arg-type]
-                label_to_agents_count[run_labels[run_idx]] = len(agents)
-            else:
-                y_values = [float(getattr(m, metric_key)) for m in history]
-
-            label = run_labels[run_idx]
-            label_to_series.setdefault(label, []).append((steps, y_values))
-
-            # metrics_history: List[List[Metrics]], each agent has a complete history
-            if enable_statistical_credibility and process_dump.metrics_history:
-                rep_series: List[List[float]] = []
-                min_len_rep = None
-                for seq in process_dump.metrics_history:
-                    vals = [float(getattr(m, metric_key)) for m in seq]
-                    if not vals:
-                        continue
-                    if min_len_rep is None:
-                        min_len_rep = len(vals)
-                    else:
-                        min_len_rep = min(min_len_rep, len(vals))
-                    rep_series.append(vals)
-                if rep_series:
-                    # 对齐同长度
-                    rep_series = [arr[:min_len_rep] for arr in rep_series]
-                    label_to_rep_series.setdefault(label, []).extend(rep_series)
-                    label_to_rep_steps[label] = steps[:min_len_rep]
-
-        for label_idx, (label, series_list) in enumerate(label_to_series.items()):
+        for label, series_list in label_to_series.items():
             if not series_list:
                 continue
-            base_steps = series_list[0][0]
-            min_len = min(len(s[0]) for s in series_list)
-            aligned_steps = base_steps[:min_len]
-            avg_values: List[float] = []
-            for idx_step in range(min_len):
-                vals = [s[1][idx_step] for s in series_list if len(s[1]) > idx_step]
-                if not vals:
-                    avg_values.append(float("nan"))
-                else:
-                    avg_values.append(float(sum(vals) / len(vals)))
+            aligned_steps, avg_values = _align_and_average_series(series_list)
+            if not aligned_steps:
+                continue
+            all_x_series.append(aligned_steps)
+            all_y_series.append(avg_values)
 
-            all_x_series.append(list(map(float, aligned_steps)))
-            all_y_series.append(list(map(float, avg_values)))
-
-            color = get_color_from_name(label)
-            fig.add_trace(
-                go.Scatter(
-                    x=aligned_steps,
-                    y=avg_values,
-                    mode="lines+markers",
-                    name=label,
-                    line=dict(color=color, width=2),
-                    marker=dict(size=5, color=color),
-                    legendgroup=label,
-                    showlegend=(idx == 0),
-                ),
-                row=row,
-                col=col,
+            _add_series_trace(
+                fig,
+                row,
+                col,
+                label,
+                aligned_steps,
+                avg_values,
+                metric_block_index,
             )
 
-            # draw statistical credibility shadow
             if enable_statistical_credibility:
-                if metric_key == "convergence_rate":
-                    n_agents = label_to_agents_count.get(label, 0)
-                    if n_agents > 0:
-                        z = _z_value_for_confidence(credibility_confidence)
-                        # based on the current average curve, estimate p for each step, and give a binomial approximate CI
-                        ci_lower: List[float] = []
-                        ci_upper: List[float] = []
-                        for p in avg_values:
-                            se = math.sqrt(max(0.0, p * (1.0 - p)) / n_agents)
-                            margin = z * se
-                            ci_lower.append(max(0.0, p - margin))
-                            ci_upper.append(min(1.0, p + margin))
-                        fig.add_trace(
-                            go.Scatter(
-                                x=aligned_steps,
-                                y=ci_lower,
-                                mode="lines",
-                                line=dict(color=color, width=0),
-                                name=f"{label} CI lower",
-                                hoverinfo="skip",
-                                legendgroup=label,
-                                showlegend=False,
-                            ),
-                            row=row,
-                            col=col,
-                        )
-                        fig.add_trace(
-                            go.Scatter(
-                                x=aligned_steps,
-                                y=ci_upper,
-                                mode="lines",
-                                line=dict(color=color, width=0),
-                                fill="tonexty",
-                                fillcolor=hex_to_rgba(color, 0.18),
-                                name=f"{label} {int(credibility_confidence * 100)}% CI",
-                                hoverinfo="skip",
-                                legendgroup=label,
-                                showlegend=False,
-                            ),
-                            row=row,
-                            col=col,
-                        )
-                else:
-                    series_for_ci = label_to_rep_series.get(label)
-                    x_for_ci = label_to_rep_steps.get(label)
-                    if series_for_ci and x_for_ci and len(series_for_ci) >= 2:
-                        mean_v, lower_v, upper_v = compute_mean_and_ci(
-                            series_for_ci, confidence=credibility_confidence
-                        )
-                        x_ci = x_for_ci[: len(mean_v)]
-                        fig.add_trace(
-                            go.Scatter(
-                                x=x_ci,
-                                y=lower_v,
-                                mode="lines",
-                                line=dict(color=color, width=0),
-                                name=f"{label} CI lower",
-                                hoverinfo="skip",
-                                legendgroup=label,
-                                showlegend=False,
-                            ),
-                            row=row,
-                            col=col,
-                        )
-                        fig.add_trace(
-                            go.Scatter(
-                                x=x_ci,
-                                y=upper_v,
-                                mode="lines",
-                                line=dict(color=color, width=0),
-                                fill="tonexty",
-                                fillcolor=hex_to_rgba(color, 0.18),
-                                name=f"{label} {int(credibility_confidence * 100)}% CI",
-                                hoverinfo="skip",
-                                legendgroup=label,
-                                showlegend=False,
-                            ),
-                            row=row,
-                            col=col,
-                        )
+                _add_ci_band_for_label(
+                    fig,
+                    row,
+                    col,
+                    label,
+                    metric_key,
+                    aligned_steps,
+                    avg_values,
+                    label_to_rep_series,
+                    label_to_rep_steps,
+                    label_to_agents_count,
+                    credibility_confidence,
+                )
 
-        if show_intersections and len(all_x_series) >= 2:
-            curve_count = len(all_x_series)
-            for i in range(curve_count - 1):
-                for j in range(i + 1, curve_count):
-                    intersections = _find_intersections(
-                        all_x_series[i],
-                        all_y_series[i],
-                        all_x_series[j],
-                        all_y_series[j],
-                    )
-                    if not intersections:
-                        continue
-                    xs = [pt[0] for pt in intersections]
-                    ys = [pt[1] for pt in intersections]
-                    fig.add_trace(
-                        go.Scatter(
-                            x=xs,
-                            y=ys,
-                            mode="markers",
-                            name=f"Intersection: {i + 1} vs {j + 1} ({metric_key})",
-                            marker=dict(
-                                size=intersection_marker_size,
-                                color=intersection_marker_color,
-                                symbol="x",
-                            ),
-                            showlegend=False,
-                        ),
-                        row=row,
-                        col=col,
-                    )
-
-        xaxis_kwargs: Dict[str, Any] = {"title": "Steps"}
-        if x_log:
-            xaxis_kwargs["type"] = "log"
-        fig.update_xaxes(row=row, col=col, **xaxis_kwargs)
-        fig.update_yaxes(row=row, col=col, title=metric_key)
-
-    final_height = height if height and height > 0 else max(400, rows * 500)
-    final_width = width if width and width > 0 else max(600, cols * 500)
-    fig.update_layout(
-        title="Comparison across runs",
-        height=final_height,
-        width=final_width,
-        showlegend=True,
-        template="plotly_white",
-        legend=dict(
-            orientation="v",
-            yanchor="top",
-            y=1,
-            xanchor="left",
-            x=1.02,
-            tracegroupgap=8,
-        ),
-        margin=dict(l=60, r=120, t=60, b=50),
-    )
-
-    output_path = Path(file_name)
-    if output_path.suffix == "":
-        output_path = output_path.with_suffix(".html")
-
-    if not output_path.parent.exists():
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    suffix = output_path.suffix.lower()
-    try:
-        if suffix in {".html", ".htm"}:
-            fig.write_html(str(output_path))
-        else:
-            fig.write_image(
-                str(output_path), width=final_width, height=final_height, scale=scale
+        if show_intersections:
+            _add_intersections(
+                fig,
+                row,
+                col,
+                all_x_series,
+                all_y_series,
+                metric_key,
+                intersection_marker_size,
+                intersection_marker_color,
             )
-    except ValueError:
-        print("Error writing image, falling back to HTML")
-        fallback_path = output_path.with_suffix(".html")
-        fig.write_html(str(fallback_path))
-        output_path = fallback_path
 
+        _configure_axes(fig, row, col, x_log, metric_key)
+
+    final_height, final_width = _compute_final_dimensions(height, width, rows, cols)
+    _apply_layout(fig, final_height, final_width)
+    _export_figure(fig, file_name, final_width, final_height, scale)
     return fig

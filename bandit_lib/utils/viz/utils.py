@@ -55,7 +55,7 @@ def compute_convergence_rate_series(
     return rates
 
 
-def _z_value_for_confidence(confidence: float) -> float:
+def z_value_for_confidence(confidence: float) -> float:
     """Return the approximate z-value for the confidence level using the normal distribution
 
     - 0.90 -> 1.6449
@@ -115,7 +115,7 @@ def compute_mean_and_ci(
     if min_len <= 0:
         return [], [], []
 
-    z = _z_value_for_confidence(confidence)
+    z = z_value_for_confidence(confidence)
     means: List[float] = []
     lowers: List[float] = []
     uppers: List[float] = []
