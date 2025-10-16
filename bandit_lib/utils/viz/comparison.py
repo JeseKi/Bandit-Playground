@@ -133,10 +133,10 @@ def _collect_metric_series_for_runs(
                 label_to_rep_steps[label] = steps[:min_len_rep]
 
     return (
-        label_to_series, # Series data for every label
-        label_to_rep_series, # Replication series per label (for statistical confidence intervals)
-        label_to_rep_steps, # Aligned step timestamps corresponding to replication series.
-        label_to_agents_count, # Number of agents per label (only populated for convergence_rate metric)
+        label_to_series,  # Series data for every label
+        label_to_rep_series,  # Replication series per label (for statistical confidence intervals)
+        label_to_rep_steps,  # Aligned step timestamps corresponding to replication series.
+        label_to_agents_count,  # Number of agents per label (only populated for convergence_rate metric)
     )
 
 
