@@ -114,9 +114,7 @@ def _collect_metric_series_for_runs(
         label_to_series.setdefault(label, []).append((steps, y_values))
 
         # metrics_history: List[List[Metrics]], each agent has a complete history
-        if enable_statistical_credibility and getattr(
-            process_dump, "metrics_history", None
-        ):
+        if enable_statistical_credibility and process_dump.metrics_history:
             rep_series: List[List[float]] = []
             min_len_rep = None
             for seq in process_dump.metrics_history:
@@ -135,10 +133,10 @@ def _collect_metric_series_for_runs(
                 label_to_rep_steps[label] = steps[:min_len_rep]
 
     return (
-        label_to_series,
-        label_to_rep_series,
-        label_to_rep_steps,
-        label_to_agents_count,
+        label_to_series, # Series data for every label
+        label_to_rep_series, # Replication series per label (for statistical confidence intervals)
+        label_to_rep_steps, # Aligned step timestamps corresponding to replication series.
+        label_to_agents_count, # Number of agents per label (only populated for convergence_rate metric)
     )
 
 
