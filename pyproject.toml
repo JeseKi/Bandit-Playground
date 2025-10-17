@@ -1,6 +1,6 @@
 [project]
 name = "bandit-lib"
-version = "0.1.2"
+version = "0.1.3"
 description = "A beginner-friendly playground for multi-armed bandit algorithms with visualization."
 authors = [
     {name = "Jese Ki",email = "2094901072@qq.com"}
